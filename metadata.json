@@ -1,0 +1,7 @@
+{
+  "name": "Golffox Management Panel",
+  "description": "A comprehensive web-based dashboard for real-time monitoring and management of Golffox's collaborative transportation system. It provides live vehicle tracking, route management, alerts, and AI-powered reporting.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
