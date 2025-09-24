@@ -15,23 +15,27 @@ const iconMap: { [key: string]: React.FC<IconProps> } = {
     FlagCheckeredIcon,
 };
 
-// Mock coordinates for directions
-const directionCoordinates = [
-    { lat: -23.5505, lng: -46.6333 },
-    { lat: -23.5555, lng: -46.6333 },
-    { lat: -23.5555, lng: -46.6433 },
-    { lat: -23.5505, lng: -46.6433 },
-    { lat: -23.5505, lng: -46.6533 },
-    { lat: -23.5605, lng: -46.6533 },
-    { lat: -23.5605, lng: -46.6633 },
+// Mock coordinates for complete route
+const routeWaypoints = [
+    { lat: -23.5505, lng: -46.6333 }, // Ponto de partida
+    { lat: -23.5555, lng: -46.6333 }, // Ponto 1
+    { lat: -23.5555, lng: -46.6433 }, // Ponto 2
+    { lat: -23.5505, lng: -46.6433 }, // Ponto 3
+    { lat: -23.5505, lng: -46.6533 }, // Ponto 4
+    { lat: -23.5605, lng: -46.6533 }, // Ponto 5
+    { lat: -23.5605, lng: -46.6633 }, // Destino final
 ];
 
 
 const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
     const [currentDirectionIndex, setCurrentDirectionIndex] = useState(0);
     const mapRef = useRef<HTMLDivElement>(null);
-    const mapInstanceRef = useRef<any>(null); // To hold map instance
+    const mapInstanceRef = useRef<any>(null);
+    const directionsServiceRef = useRef<any>(null);
+    const directionsRendererRef = useRef<any>(null);
+    const currentPositionMarkerRef = useRef<any>(null);
     const [mapStatus, setMapStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+    const [routeLoaded, setRouteLoaded] = useState(false);
     
     const currentDirection = MOCK_DIRECTIONS[currentDirectionIndex];
     const IconComponent = iconMap[currentDirection.icon] || FlagCheckeredIcon;
@@ -66,58 +70,116 @@ const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
         };
     }, []);
 
-    // Initialize Map
+    // Initialize Map and Route
     useEffect(() => {
         if (mapStatus !== 'loaded' || !mapRef.current) return;
 
-        const { Map } = window.google.maps;
+        const { Map, DirectionsService, DirectionsRenderer } = window.google.maps;
+        
+        // Initialize map
         const map = new Map(mapRef.current, {
-            center: directionCoordinates[0],
-            zoom: 16,
+            center: routeWaypoints[0],
+            zoom: 14,
             mapId: 'DRIVER_NAVIGATION_MAP',
             disableDefaultUI: true,
         });
         mapInstanceRef.current = map;
 
+        // Initialize directions service and renderer
+        const directionsService = new DirectionsService();
+        const directionsRenderer = new DirectionsRenderer({
+            suppressMarkers: false,
+            polylineOptions: {
+                strokeColor: '#FF5F00',
+                strokeOpacity: 1.0,
+                strokeWeight: 6,
+            },
+        });
+        
+        directionsServiceRef.current = directionsService;
+        directionsRendererRef.current = directionsRenderer;
+        directionsRenderer.setMap(map);
+
+        // Calculate and display the complete route
+        const origin = routeWaypoints[0];
+        const destination = routeWaypoints[routeWaypoints.length - 1];
+        const waypoints = routeWaypoints.slice(1, -1).map(point => ({
+            location: point,
+            stopover: true,
+        }));
+
+        directionsService.route(
+            {
+                origin: origin,
+                destination: destination,
+                waypoints: waypoints,
+                travelMode: window.google.maps.TravelMode.DRIVING,
+                optimizeWaypoints: false,
+            },
+            (result: any, status: any) => {
+                if (status === 'OK' && result) {
+                    directionsRenderer.setDirections(result);
+                    setRouteLoaded(true);
+                    
+                    // Create current position marker
+                    const currentMarker = new window.google.maps.Marker({
+                        position: origin,
+                        map: map,
+                        icon: {
+                            path: window.google.maps.SymbolPath.CIRCLE,
+                            scale: 12,
+                            fillColor: "#002D56",
+                            fillOpacity: 1,
+                            strokeWeight: 3,
+                            strokeColor: 'white',
+                            zIndex: 1000,
+                        },
+                        title: 'Posição Atual'
+                    });
+                    currentPositionMarkerRef.current = currentMarker;
+                } else {
+                    console.error('Erro ao calcular rota:', status);
+                    // Fallback para rota simples se a API falhar
+                    const fallbackPath = routeWaypoints;
+                    new window.google.maps.Polyline({
+                        path: fallbackPath,
+                        geodesic: true,
+                        strokeColor: '#FF5F00',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 6,
+                        map: map,
+                    });
+                    setRouteLoaded(true);
+                }
+            }
+        );
+
     }, [mapStatus]);
 
-    // Update map on direction change
+    // Update current position on direction change
     useEffect(() => {
-        if (mapStatus !== 'loaded' || !mapInstanceRef.current) return;
+        if (mapStatus !== 'loaded' || !mapInstanceRef.current || !routeLoaded || !currentPositionMarkerRef.current) return;
         
         const map = mapInstanceRef.current;
-        const currentPos = directionCoordinates[currentDirectionIndex];
-        const nextPos = directionCoordinates[currentDirectionIndex + 1];
-
-        map.panTo(currentPos);
+        const currentMarker = currentPositionMarkerRef.current;
         
-        // Clear previous overlays if any
-        // In a real app, manage overlays more carefully
-        
-        if(nextPos) {
-            new window.google.maps.Polyline({
-                path: [currentPos, nextPos],
-                strokeColor: "#FF5F00",
-                strokeOpacity: 1.0,
-                strokeWeight: 8,
-                map: map,
-            });
+        // Update current position based on direction index
+        if (currentDirectionIndex < routeWaypoints.length) {
+            const currentPos = routeWaypoints[currentDirectionIndex];
+            
+            // Animate marker to new position
+            currentMarker.setPosition(currentPos);
+            
+            // Pan map to follow current position
+            map.panTo(currentPos);
+            
+            // Adjust zoom based on remaining distance
+            const remainingWaypoints = routeWaypoints.length - currentDirectionIndex;
+            const zoomLevel = remainingWaypoints > 3 ? 14 : 16;
+            map.setZoom(zoomLevel);
         }
 
-        new window.google.maps.Marker({
-            position: currentPos,
-            map: map,
-            icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#002D56",
-                fillOpacity: 1,
-                strokeWeight: 3,
-                strokeColor: 'white'
-            }
-        });
-
-    }, [currentDirectionIndex, mapStatus]);
+    }, [currentDirectionIndex, mapStatus, routeLoaded]);
 
 
     useEffect(() => {

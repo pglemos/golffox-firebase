@@ -17,19 +17,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     type="text" 
                     placeholder="Usuário (CPF)" 
                     defaultValue="123.456.789-00"
-                    className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none"
+                    className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none text-base"
+                    autoComplete="username"
                 />
                 <input 
                     type="password" 
                     placeholder="Senha" 
                     defaultValue="********"
-                    className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none"
+                    className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none text-base"
+                    autoComplete="current-password"
                 />
             </div>
 
             <button
                 onClick={onLogin}
-                className="w-full bg-golffox-orange-primary text-white font-bold py-4 rounded-lg mt-10 hover:bg-orange-600 transition-all duration-300 transform hover:scale-105"
+                className="w-full bg-golffox-orange-primary text-white font-bold py-4 rounded-lg mt-10 hover:bg-orange-600 transition-all duration-300 transform hover:scale-105 touch-manipulation no-tap-highlight min-h-[48px]"
             >
                 Entrar
             </button>

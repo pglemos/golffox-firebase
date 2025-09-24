@@ -1,7 +1,8 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GEMINI_CONFIG } from "../config";
 
 export const generateReport = async (prompt: string, contextData: any): Promise<string> => {
-  const API_KEY = process.env.API_KEY;
+  const API_KEY = GEMINI_CONFIG.apiKey;
 
   if (!API_KEY) {
     return Promise.resolve("Erro: Chave da API do Gemini não configurada. A funcionalidade de relatório com IA está desativada.");

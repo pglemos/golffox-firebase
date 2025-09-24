@@ -42,7 +42,14 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
   // --- Company Management Handlers ---
   const openCompanyCreateModal = () => {
     setCompanyModalMode('create');
-    setCurrentCompany({ name: '', cnpj: '', contact: '', status: 'Ativo', address: '', contractedPassengers: 0 });
+    setCurrentCompany({ 
+      name: '', 
+      cnpj: '', 
+      contact: '', 
+      status: 'Ativo', 
+      address: { text: '', coordinates: { lat: 0, lng: 0 } }, 
+      contractedPassengers: 0 
+    });
     setErrors({});
     setIsCompanyModalOpen(true);
   };
@@ -70,7 +77,7 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
   const validateCompany = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!currentCompany || !currentCompany.name?.trim()) newErrors.name = 'O nome da empresa é obrigatório.';
-    if (!currentCompany.address?.trim()) newErrors.address = 'O endereço completo é obrigatório.';
+    if (!currentCompany.address?.text?.trim()) newErrors.address = 'O endereço completo é obrigatório.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -85,7 +92,10 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
         cnpj: currentCompany.cnpj || 'N/A',
         contact: currentCompany.contact || 'N/A',
         status: currentCompany.status || 'Ativo',
-        address: currentCompany.address!,
+        address: { 
+          text: currentCompany.address?.text || '', 
+          coordinates: currentCompany.address?.coordinates || { lat: 0, lng: 0 }
+        },
         contractedPassengers: currentCompany.contractedPassengers || 0,
       };
       setCompanies(prev => [newCompany, ...prev]);
@@ -103,7 +113,17 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
 
   const handleCompanyInputChange = (field: keyof Company, value: string | number) => {
     if(currentCompany) {
-        setCurrentCompany({ ...currentCompany, [field]: value });
+        if (field === 'address') {
+            setCurrentCompany({ 
+                ...currentCompany, 
+                address: { 
+                    text: value as string,
+                    coordinates: currentCompany.address?.coordinates || { lat: 0, lng: 0 }
+                }
+            });
+        } else {
+            setCurrentCompany({ ...currentCompany, [field]: value });
+        }
         if(errors[field]) {
             const newErrors = { ...errors };
             delete newErrors[field];
@@ -186,16 +206,17 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-golffox-gray-dark">Gerenciamento de Empresas (Clientes)</h2>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+        <h2 className="text-2xl sm:text-3xl font-bold text-golffox-gray-dark">Gerenciamento de Empresas</h2>
         <button
           onClick={openCompanyCreateModal}
-          className="bg-golffox-orange-primary text-white font-bold py-2 px-4 rounded-lg flex items-center hover:bg-orange-600 transition-colors">
+          className="bg-golffox-orange-primary text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors touch-manipulation no-tap-highlight min-h-[44px]">
           <PlusCircleIcon className="h-5 w-5 mr-2" />
-          Cadastrar Nova Empresa
+          <span className="text-sm sm:text-base">Cadastrar Nova Empresa</span>
         </button>
       </div>
-      <div className="bg-golffox-white rounded-lg shadow-md overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden lg:block bg-golffox-white rounded-lg shadow-md overflow-hidden">
         <table className="min-w-full">
           <thead className="bg-golffox-blue-dark text-white">
             <tr>
@@ -210,7 +231,7 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
             {companies.map((company: Company, index: number) => (
               <tr key={company.id} className={index % 2 === 0 ? 'bg-white' : 'bg-golffox-gray-light'}>
                 <td className="py-4 px-6 font-medium text-golffox-gray-dark">{company.name}</td>
-                <td className="py-4 px-6">{company.address}</td>
+                <td className="py-4 px-6">{company.address.text}</td>
                 <td className="py-4 px-6 text-center">{company.contractedPassengers}</td>
                 <td className="py-4 px-6 text-center">
                   <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(company.status)}`}>
@@ -236,6 +257,54 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
         </table>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="lg:hidden space-y-4">
+        {companies.map((company: Company) => (
+          <div key={company.id} className="bg-white rounded-lg shadow-md p-4 border border-golffox-gray-light">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-golffox-gray-dark">{company.name}</h3>
+                <p className="text-sm text-golffox-gray-medium mt-1">{company.address.text}</p>
+              </div>
+              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(company.status)} ml-2`}>
+                {company.status}
+              </span>
+            </div>
+            
+            <div className="mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-golffox-gray-dark">Passageiros Contratados:</span>
+                <span className="text-sm font-bold text-golffox-blue-dark">{company.contractedPassengers}</span>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-3 border-t border-golffox-gray-light">
+              <button 
+                onClick={() => openEmployeesModal(company)} 
+                className="text-golffox-blue-dark hover:text-golffox-orange-primary p-2 touch-manipulation no-tap-highlight" 
+                title="Ver Funcionários"
+              >
+                <UserGroupIcon className="h-5 w-5" />
+              </button>
+              <button 
+                onClick={() => openCompanyEditModal(company)} 
+                className="text-golffox-blue-light hover:text-golffox-blue-dark p-2 touch-manipulation no-tap-highlight" 
+                title="Editar Empresa"
+              >
+                <PencilIcon className="h-5 w-5" />
+              </button>
+              <button 
+                onClick={() => openCompanyConfirmModal(company.id)} 
+                className="text-golffox-red hover:text-red-700 p-2 touch-manipulation no-tap-highlight" 
+                title="Excluir Empresa"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Company Edit/Create Modal */}
       {isCompanyModalOpen && currentCompany && (
          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in-down">
@@ -252,7 +321,7 @@ const CompaniesManagement: React.FC<CompaniesManagementProps> = ({ companies, se
               </div>
                <div>
                 <label className="block text-sm font-medium text-golffox-gray-dark">Endereço Completo</label>
-                <input type="text" value={currentCompany.address || ''} onChange={(e) => handleCompanyInputChange('address', e.target.value)} className={`mt-1 block w-full px-3 py-2 border rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 ${errors.address ? 'border-golffox-red focus:border-golffox-red focus:ring-golffox-red' : 'border-golffox-gray-light focus:border-golffox-orange-primary focus:ring-golffox-orange-primary'}`}/>
+                <input type="text" value={currentCompany.address?.text || ''} onChange={(e) => handleCompanyInputChange('address', e.target.value)} className={`mt-1 block w-full px-3 py-2 border rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 ${errors.address ? 'border-golffox-red focus:border-golffox-red focus:ring-golffox-red' : 'border-golffox-gray-light focus:border-golffox-orange-primary focus:ring-golffox-orange-primary'}`}/>
                  {errors.address && <p className="text-golffox-red mt-1 text-xs font-semibold">{errors.address}</p>}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

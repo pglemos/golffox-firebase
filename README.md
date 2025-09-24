@@ -88,7 +88,7 @@ O **Golffox Management System** é uma aplicação web completa desenvolvida em 
 
 5. **Acesse a aplicação**
    
-   Abra [http://localhost:3000](http://localhost:3000) no seu navegador
+   Para acessar a área administrativa, abra http://localhost:3000/admin no seu navegador
 
 ## 📁 Estrutura do Projeto
 

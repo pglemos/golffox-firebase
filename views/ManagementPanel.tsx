@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
+import MobileNavigation from '../components/MobileNavigation';
 import Dashboard from '../components/Dashboard';
 import RealTimeMap from '../components/RealTimeMap';
 import RoutesTable from '../components/RoutesTable';
@@ -56,9 +57,17 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({ routes, setRoutes, co
   };
 
   return (
-    <div className="flex h-full bg-golffox-white">
-      <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
-      <main className="flex-1 p-8 overflow-y-auto bg-golffox-gray-light">
+    <div className="flex flex-col lg:flex-row h-full bg-golffox-white">
+      {/* Mobile Navigation */}
+      <MobileNavigation currentView={currentView} setCurrentView={setCurrentView} />
+      
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+      </div>
+      
+      {/* Main Content */}
+      <main className="flex-1 p-4 lg:p-8 overflow-y-auto bg-golffox-gray-light pb-20 lg:pb-8">
         {renderContent()}
       </main>
     </div>

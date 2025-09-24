@@ -74,10 +74,43 @@ export interface Vehicle {
 
 export interface Driver {
     id: string;
+    // Dados Pessoais
     name: string;
+    cpf: string;
+    rg: string;
+    birthDate: string;
+    phone: string;
+    email: string;
+    address: string;
+    cep: string;
+    
+    // Dados Profissionais
     cnh: string;
-    status: 'Disponível' | 'Em Rota' | 'Indisponível';
+    cnhValidity: string;
+    cnhCategory: 'D' | 'E';
+    hasEAR: boolean;
+    transportCourseFile?: string;
+    transportCourseValidity?: string;
+    lastToxicologicalExam: string;
     photoUrl: string;
+    
+    // Documentos (arquivos)
+    cnhFile?: string;
+    residenceProofFile?: string;
+    courseFile?: string;
+    toxicologicalExamFile?: string;
+    idPhotoFile?: string;
+    
+    // Vínculo com a Golffox
+    contractType: 'CLT' | 'terceirizado' | 'autônomo';
+    credentialingDate: string;
+    status: 'Ativo' | 'Em análise' | 'Inativo';
+    linkedCompany: string;
+    
+    // Informações Operacionais
+    assignedRoutes: string[];
+    availability: string;
+    lastUpdate: string;
 }
 
 export interface Company {
@@ -86,7 +119,13 @@ export interface Company {
     cnpj: string;
     contact: string;
     status: 'Ativo' | 'Inativo';
-    address: string;
+    address: {
+        text: string;
+        coordinates: {
+            lat: number;
+            lng: number;
+        };
+    };
     contractedPassengers: number;
 }
 

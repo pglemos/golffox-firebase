@@ -41,9 +41,42 @@ export const MOCK_PERMISSION_PROFILES: PermissionProfile[] = [
 ];
 
 export const MOCK_COMPANIES: Company[] = [
-    { id: 'c1', name: 'Minerva Foods', cnpj: '12.345.678/0001-99', contact: 'financeiro@minervafoods.com', status: 'Ativo', address: 'Rua das Flores, 123, São Paulo, SP', contractedPassengers: 50 },
-    { id: 'c2', name: 'JBS S.A.', cnpj: '02.916.265/0001-60', contact: 'operacional@jbs.com.br', status: 'Ativo', address: 'Av. Industrial, 456, Barueri, SP', contractedPassengers: 120 },
-    { id: 'c3', name: 'Marfrig', cnpj: '03.853.896/0001-40', contact: 'contato@marfrig.com.br', status: 'Inativo', address: 'Estrada Velha, 789, Itapevi, SP', contractedPassengers: 75 },
+    { 
+        id: 'c1', 
+        name: 'Minerva Foods', 
+        cnpj: '12.345.678/0001-99', 
+        contact: 'financeiro@minervafoods.com', 
+        status: 'Ativo', 
+        address: {
+            text: 'Rua das Flores, 123, São Paulo, SP',
+            coordinates: { lat: -23.5489, lng: -46.6388 }
+        }, 
+        contractedPassengers: 50 
+    },
+    { 
+        id: 'c2', 
+        name: 'JBS S.A.', 
+        cnpj: '02.916.265/0001-60', 
+        contact: 'operacional@jbs.com.br', 
+        status: 'Ativo', 
+        address: {
+            text: 'Av. Industrial, 456, Barueri, SP',
+            coordinates: { lat: -23.5106, lng: -46.8756 }
+        }, 
+        contractedPassengers: 120 
+    },
+    { 
+        id: 'c3', 
+        name: 'Marfrig', 
+        cnpj: '03.853.896/0001-40', 
+        contact: 'contato@marfrig.com.br', 
+        status: 'Inativo', 
+        address: {
+            text: 'Estrada Velha, 789, Itapevi, SP',
+            coordinates: { lat: -23.5489, lng: -46.9311 }
+        }, 
+        contractedPassengers: 75 
+    },
 ];
 
 export const MOCK_EMPLOYEES: Employee[] = [
@@ -173,11 +206,131 @@ export const MOCK_VEHICLES: Vehicle[] = [
 ];
 
 export const MOCK_DRIVERS: Driver[] = [
-    { id: 'd1', name: 'João Silva', cnh: '123456789', status: 'Em Rota', photoUrl: 'https://picsum.photos/seed/d1/100' },
-    { id: 'd2', name: 'Maria Oliveira', cnh: '987654321', status: 'Em Rota', photoUrl: 'https://picsum.photos/seed/d2/100' },
-    { id: 'd3', name: 'Pedro Martins', cnh: '112233445', status: 'Disponível', photoUrl: 'https://picsum.photos/seed/d3/100' },
-    { id: 'd4', name: 'Carlos Souza', cnh: '556677889', status: 'Indisponível', photoUrl: 'https://picsum.photos/seed/d4/100' },
-    { id: 'd5', name: 'Ana Costa', cnh: '334455667', status: 'Disponível', photoUrl: 'https://picsum.photos/seed/d5/100' },
+    { 
+        id: 'd1', 
+        name: 'João Silva', 
+        cpf: '123.456.789-01',
+        rg: '12.345.678-9',
+        birthDate: '1985-03-15',
+        phone: '(11) 99999-1234',
+        email: 'joao.silva@email.com',
+        address: 'Rua das Flores, 123, São Paulo - SP',
+        cep: '01234-567',
+        cnh: '123456789', 
+        cnhValidity: '2026-03-15',
+        cnhCategory: 'D',
+        hasEAR: true,
+        transportCourseValidity: '2025-12-31',
+        lastToxicologicalExam: '2024-01-15',
+        photoUrl: 'https://picsum.photos/seed/d1/100',
+        contractType: 'CLT',
+        credentialingDate: '2023-01-15',
+        status: 'Ativo', 
+        linkedCompany: 'Empresa ABC',
+        assignedRoutes: ['Rota 1', 'Rota 2'],
+        availability: 'Segunda a Sexta: 06:00-18:00',
+        lastUpdate: '2024-01-15'
+    },
+    { 
+        id: 'd2', 
+        name: 'Maria Oliveira', 
+        cpf: '987.654.321-01',
+        rg: '98.765.432-1',
+        birthDate: '1990-07-22',
+        phone: '(11) 88888-5678',
+        email: 'maria.oliveira@email.com',
+        address: 'Av. Paulista, 456, São Paulo - SP',
+        cep: '01310-100',
+        cnh: '987654321', 
+        cnhValidity: '2025-07-22',
+        cnhCategory: 'E',
+        hasEAR: false,
+        transportCourseValidity: '2025-06-30',
+        lastToxicologicalExam: '2024-02-10',
+        photoUrl: 'https://picsum.photos/seed/d2/100',
+        contractType: 'terceirizado',
+        credentialingDate: '2023-02-10',
+        status: 'Ativo', 
+        linkedCompany: 'Empresa XYZ',
+        assignedRoutes: ['Rota 3'],
+        availability: 'Segunda a Sábado: 05:00-17:00',
+        lastUpdate: '2024-02-10'
+    },
+    { 
+        id: 'd3', 
+        name: 'Pedro Martins', 
+        cpf: '111.222.333-44',
+        rg: '11.222.333-4',
+        birthDate: '1988-11-05',
+        phone: '(11) 77777-9012',
+        email: 'pedro.martins@email.com',
+        address: 'Rua Augusta, 789, São Paulo - SP',
+        cep: '01305-000',
+        cnh: '112233445', 
+        cnhValidity: '2027-11-05',
+        cnhCategory: 'D',
+        hasEAR: true,
+        transportCourseValidity: '2026-01-31',
+        lastToxicologicalExam: '2024-03-01',
+        photoUrl: 'https://picsum.photos/seed/d3/100',
+        contractType: 'autônomo',
+        credentialingDate: '2023-03-01',
+        status: 'Ativo', 
+        linkedCompany: 'Empresa DEF',
+        assignedRoutes: ['Rota 4', 'Rota 5'],
+        availability: 'Terça a Sábado: 07:00-19:00',
+        lastUpdate: '2024-03-01'
+    },
+    { 
+        id: 'd4', 
+        name: 'Carlos Souza', 
+        cpf: '555.666.777-88',
+        rg: '55.666.777-8',
+        birthDate: '1982-09-18',
+        phone: '(11) 66666-3456',
+        email: 'carlos.souza@email.com',
+        address: 'Rua da Consolação, 321, São Paulo - SP',
+        cep: '01302-001',
+        cnh: '556677889', 
+        cnhValidity: '2024-09-18',
+        cnhCategory: 'E',
+        hasEAR: false,
+        transportCourseValidity: '2024-12-31',
+        lastToxicologicalExam: '2023-12-15',
+        photoUrl: 'https://picsum.photos/seed/d4/100',
+        contractType: 'CLT',
+        credentialingDate: '2022-12-15',
+        status: 'Em análise', 
+        linkedCompany: 'Empresa GHI',
+        assignedRoutes: [],
+        availability: 'Segunda a Sexta: 08:00-20:00',
+        lastUpdate: '2023-12-15'
+    },
+    { 
+        id: 'd5', 
+        name: 'Ana Costa', 
+        cpf: '333.444.555-66',
+        rg: '33.444.555-6',
+        birthDate: '1995-12-03',
+        phone: '(11) 55555-7890',
+        email: 'ana.costa@email.com',
+        address: 'Rua Oscar Freire, 654, São Paulo - SP',
+        cep: '01426-001',
+        cnh: '334455667', 
+        cnhValidity: '2028-12-03',
+        cnhCategory: 'D',
+        hasEAR: true,
+        transportCourseValidity: '2027-03-31',
+        lastToxicologicalExam: '2024-04-20',
+        photoUrl: 'https://picsum.photos/seed/d5/100',
+        contractType: 'terceirizado',
+        credentialingDate: '2024-04-20',
+        status: 'Ativo', 
+        linkedCompany: 'Empresa JKL',
+        assignedRoutes: ['Rota 6'],
+        availability: 'Segunda a Domingo: 06:00-22:00',
+        lastUpdate: '2024-04-20'
+    },
 ];
 
 export const MOCK_ALERTS: Alert[] = [

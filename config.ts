@@ -1,42 +1,33 @@
-// Configurações da aplicação
-export const config = {
-  // Google Maps API Key - substitua pela sua chave válida
-  googleMaps: {
-    apiKey: 'AIzaSyC_SuBA3nwPYmhUC7OtiTYYl4iU8K674h8', // Esta é uma chave de exemplo - substitua pela sua
-    libraries: ['marker', 'directions', 'geometry'] as const,
-  },
-  
-  // Gemini AI API Key - carregada do arquivo .env.local
-  gemini: {
-    apiKey: process.env.GEMINI_API_KEY || 'PLACEHOLDER_API_KEY',
-  },
-  
-  // URLs e endpoints
-  urls: {
-    googleMapsApi: 'https://maps.googleapis.com/maps/api/js',
-    markerClusterer: 'https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js',
-  },
-  
-  // Configurações do mapa
-  map: {
-    defaultCenter: { lat: -23.5505, lng: -46.6333 }, // São Paulo
-    defaultZoom: 12,
-    styles: {
-      height: '100%',
-      width: '100%',
-    },
-  },
+export const GOOGLE_MAPS_CONFIG = {
+  apiKey: 'AIzaSyC_SuBA3nwPYmhUC7OtiTYYl4iU8K674h8', // Placeholder - replace with your actual API key
+  libraries: ['places', 'geometry'] as const,
+  defaultCenter: { lat: -23.5505, lng: -46.6333 }, // São Paulo
+  defaultZoom: 12,
+};
+
+export const GEMINI_CONFIG = {
+  apiKey: (import.meta as any).env?.VITE_GEMINI_API_KEY || 'PLACEHOLDER_API_KEY',
+};
+
+export const API_URLS = {
+  googleMapsApi: 'https://maps.googleapis.com/maps/api/js',
+  markerClusterer: 'https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js',
+};
+
+export const MAP_STYLES = {
+  height: '100%',
+  width: '100%',
 };
 
 // Função para verificar se as APIs estão configuradas corretamente
 export const checkApiConfiguration = () => {
   const issues: string[] = [];
   
-  if (!config.googleMaps.apiKey || config.googleMaps.apiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
+  if (!GOOGLE_MAPS_CONFIG.apiKey || GOOGLE_MAPS_CONFIG.apiKey === 'AIzaSyC_SuBA3nwPYmhUC7OtiTYYl4iU8K674h8') {
     issues.push('Google Maps API Key não configurada');
   }
   
-  if (!config.gemini.apiKey || config.gemini.apiKey === 'PLACEHOLDER_API_KEY') {
+  if (!GEMINI_CONFIG.apiKey || GEMINI_CONFIG.apiKey === 'PLACEHOLDER_API_KEY') {
     issues.push('Gemini API Key não configurada');
   }
   
@@ -45,5 +36,3 @@ export const checkApiConfiguration = () => {
     issues,
   };
 };
-
-export default config;

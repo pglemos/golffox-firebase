@@ -96,33 +96,33 @@ const PassengerHome: React.FC<PassengerHomeProps> = ({ user }) => {
 
     return (
         <div className="flex flex-col h-full bg-white">
-            <header className="bg-golffox-orange-primary text-white p-4 flex justify-between items-center shadow-md">
-                <div><h1 className="text-xl font-bold">Bom dia, {user.name.split(' ')[0]}!</h1><p className="text-sm opacity-90">{route.name}</p></div>
-                <BellIcon className="h-6 w-6" />
+            <header className="bg-golffox-orange-primary text-white p-3 sm:p-4 flex justify-between items-center shadow-md">
+                <div><h1 className="text-lg sm:text-xl font-bold">Bom dia, {user.name.split(' ')[0]}!</h1><p className="text-xs sm:text-sm opacity-90">{route.name}</p></div>
+                <BellIcon className="h-5 w-5 sm:h-6 sm:w-6" />
             </header>
 
             <div className="relative h-2/5 bg-gray-300">
                 {mapStatus === 'error' && <MapApiKeyWarning />}
                 {mapStatus === 'loading' && <div className="w-full h-full flex items-center justify-center bg-gray-200"><p className="text-golffox-gray-medium">Carregando Mapa...</p></div>}
                 <div ref={mapRef} className={`w-full h-full ${mapStatus !== 'loaded' ? 'invisible' : ''}`} />
-                 <div className="absolute bottom-2 left-2 bg-white/80 p-2 rounded-lg shadow-lg text-center">
-                    <p className="text-xs text-golffox-gray-dark">Seu ônibus chega em</p>
-                    <p className="text-2xl font-bold text-golffox-orange-primary">5 min</p>
+                 <div className="absolute bottom-2 left-2 bg-white/80 p-2 sm:p-3 rounded-lg shadow-lg text-center">
+                    <p className="text-xs sm:text-sm text-golffox-gray-dark">Seu ônibus chega em</p>
+                    <p className="text-xl sm:text-2xl font-bold text-golffox-orange-primary">5 min</p>
                  </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto p-4 space-y-4">
-                <div className="bg-golffox-gray-light p-4 rounded-lg">
-                    <div className="flex items-center mb-2"><UserCircleIcon className="h-6 w-6 text-golffox-gray-dark mr-2"/><p className="font-semibold text-golffox-gray-dark">Motorista: {route.driver}</p></div>
-                    <div className="flex items-center"><TruckIcon className="h-6 w-6 text-golffox-gray-dark mr-2"/><p className="font-semibold text-golffox-gray-dark">Veículo: {route.vehicle}</p></div>
+            <div className="flex-grow overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+                <div className="bg-golffox-gray-light p-3 sm:p-4 rounded-lg">
+                    <div className="flex items-center mb-2"><UserCircleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-golffox-gray-dark mr-2"/><p className="text-sm sm:text-base font-semibold text-golffox-gray-dark">Motorista: {route.driver}</p></div>
+                    <div className="flex items-center"><TruckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-golffox-gray-dark mr-2"/><p className="text-sm sm:text-base font-semibold text-golffox-gray-dark">Veículo: {route.vehicle}</p></div>
                 </div>
 
-                <div className="bg-golffox-gray-light p-4 rounded-lg">
-                     <h3 className="font-bold text-golffox-gray-dark mb-3">Detalhes da Rota</h3>
-                     <div className="space-y-3">
-                        <div className="flex items-center"><ClockIcon className="h-5 w-5 text-golffox-gray-medium mr-3" /><div className={`text-sm font-semibold px-2 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>Status: {statusInfo.text}</div></div>
-                        <div className="flex items-center"><MapPinIcon className="h-5 w-5 text-golffox-gray-medium mr-3" /><span className="text-sm text-golffox-gray-medium">Próxima parada: Ponto 3</span></div>
-                        <div className="flex items-center"><ClockIcon className="h-5 w-5 text-golffox-gray-medium mr-3" /><span className="text-sm text-golffox-gray-medium">Seu embarque: 06:05</span></div>
+                <div className="bg-golffox-gray-light p-3 sm:p-4 rounded-lg">
+                     <h3 className="text-sm sm:text-base font-bold text-golffox-gray-dark mb-3">Detalhes da Rota</h3>
+                     <div className="space-y-2 sm:space-y-3">
+                        <div className="flex items-center"><ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-golffox-gray-medium mr-2 sm:mr-3" /><div className={`text-xs sm:text-sm font-semibold px-2 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>Status: {statusInfo.text}</div></div>
+                        <div className="flex items-center"><MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5 text-golffox-gray-medium mr-2 sm:mr-3" /><span className="text-xs sm:text-sm text-golffox-gray-medium">Próxima parada: Ponto 3</span></div>
+                        <div className="flex items-center"><ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-golffox-gray-medium mr-2 sm:mr-3" /><span className="text-xs sm:text-sm text-golffox-gray-medium">Seu embarque: 06:05</span></div>
                      </div>
                 </div>
             </div>

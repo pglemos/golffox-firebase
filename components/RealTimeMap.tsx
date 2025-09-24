@@ -152,17 +152,18 @@ const RealTimeMap: React.FC = () => {
     let tripStartTime = Date.now();
     const totalDuration = directionsResult.routes[0].legs.reduce((acc: number, leg: any) => acc + leg.duration.value, 0);
 
-    const pin = document.createElement('div');
-    pin.className = 'w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-transform duration-300';
-    pin.style.backgroundColor = '#FF5F00';
-    pin.style.border = '2px solid white';
-    pin.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 013.375-3.375h9.75a3.375 3.375 0 013.375 3.375v1.875m-17.25 4.5h15M6.375 12h11.25" /></svg>`;
-      
-    animatedVehicleMarkerRef.current = new window.google.maps.marker.AdvancedMarkerElement({
+    animatedVehicleMarkerRef.current = new window.google.maps.Marker({
         position: overviewPath[0],
         map: mapInstanceRef.current,
-        content: pin,
         zIndex: 1000,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 15,
+          fillColor: '#FF5F00',
+          fillOpacity: 1,
+          strokeWeight: 3,
+          strokeColor: 'white'
+        }
     });
     
     simulationIntervalRef.current = setInterval(() => {
@@ -203,37 +204,33 @@ const RealTimeMap: React.FC = () => {
   useEffect(() => {
     if (mapStatus.status !== 'loaded' || !mapRef.current) return;
 
-    const { Map } = window.google.maps;
-    const { AdvancedMarkerElement } = window.google.maps.marker;
-    const { MarkerClusterer } = window.markerClusterer;
+    const { Map, Marker } = window.google.maps;
 
     const map = new Map(mapRef.current as HTMLElement, {
       center: { lat: -23.5505, lng: -46.6333 },
       zoom: 12,
-      mapId: 'GOLFFOX_REALTIME_MAP',
       disableDefaultUI: true,
     });
     mapInstanceRef.current = map;
 
     markersRef.current = MOCK_VEHICLES.map((vehicle: Vehicle) => {
-      const pin = document.createElement('div');
-      pin.className = 'w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-transform duration-300';
-      pin.style.backgroundColor = statusColors[vehicle.status];
-      pin.style.border = '2px solid white';
-      pin.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 013.375-3.375h9.75a3.375 3.375 0 013.375 3.375v1.875m-17.25 4.5h15M6.375 12h11.25" /></svg>`;
-      
-      const marker = new AdvancedMarkerElement({
+      const marker = new Marker({
         position: vehicle.position,
         map,
         title: vehicle.plate,
-        content: pin,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: statusColors[vehicle.status],
+          fillOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: 'white'
+        }
       });
 
       marker.addListener('click', () => handleVehicleSelect(vehicle));
       return marker;
     });
-
-    new MarkerClusterer({ markers: markersRef.current, map });
   }, [mapStatus.status]);
   
   const formatDuration = (seconds: number) => {

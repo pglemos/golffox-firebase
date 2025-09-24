@@ -110,16 +110,65 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-golffox-gray-dark">Gerenciamento de Rotas</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <h2 className="text-xl sm:text-3xl font-bold text-golffox-gray-dark">Gerenciamento de Rotas</h2>
         <button
           onClick={openCreateModal}
-          className="bg-golffox-orange-primary text-white font-bold py-2 px-4 rounded-lg flex items-center hover:bg-orange-600 transition-colors">
+          className="w-full sm:w-auto bg-golffox-orange-primary text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors">
           <PlusCircleIcon className="h-5 w-5 mr-2" />
-          Criar Nova Rota
+          <span className="hidden sm:inline">Criar Nova Rota</span>
+          <span className="sm:hidden">Nova Rota</span>
         </button>
       </div>
-      <div className="bg-golffox-white rounded-lg shadow-md overflow-hidden">
+      
+      {/* Mobile Card View */}
+      <div className="lg:hidden space-y-4">
+        {routes.map((route: Route) => (
+          <div key={route.id} className="bg-golffox-white rounded-lg shadow-md p-4">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-bold text-golffox-gray-dark text-lg">{route.name}</h3>
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(route.status)}`}>
+                {route.status}
+              </span>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-golffox-gray-medium">Motorista:</span>
+                <span className="font-medium">{route.driver}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-golffox-gray-medium">Veículo:</span>
+                <span className="font-medium">{route.vehicle}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-golffox-gray-medium">Passageiros:</span>
+                <span className="font-medium">{route.passengers.list.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-golffox-gray-medium">Pontualidade:</span>
+                <span className={`font-bold ${route.punctuality > 5 ? 'text-golffox-red' : route.punctuality > 0 ? 'text-golffox-yellow' : 'text-golffox-blue-light'}`}>
+                  {route.punctuality === 0 ? '✓' : `${route.punctuality > 0 ? '+' : ''}${route.punctuality} min`}
+                </span>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <button
+                onClick={() => openEditModal(route)}
+                className="bg-golffox-blue-light text-white p-2 rounded-lg hover:bg-blue-600 transition-colors">
+                <PencilIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => openConfirmModal(route.id)}
+                className="bg-golffox-red text-white p-2 rounded-lg hover:bg-red-600 transition-colors">
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden lg:block bg-golffox-white rounded-lg shadow-md overflow-hidden">
         <table className="min-w-full">
           <thead className="bg-golffox-blue-dark text-white">
             <tr>

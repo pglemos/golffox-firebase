@@ -32,10 +32,10 @@ const PassengerLoginScreen: React.FC<PassengerLoginScreenProps> = ({ employees, 
     };
 
     return (
-        <div className="flex flex-col items-center justify-center h-full bg-white p-8">
-            <img src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-24 mb-8" />
-            <h1 className="text-3xl font-bold text-golffox-gray-dark mb-2">Acesso do Passageiro</h1>
-            <p className="text-golffox-gray-medium mb-10 text-center">Use seu CPF e senha para acompanhar sua rota.</p>
+        <div className="flex flex-col items-center justify-center h-full bg-white p-4 sm:p-8">
+            <img src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-20 sm:h-24 mb-6 sm:mb-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-golffox-gray-dark mb-2">Acesso do Passageiro</h1>
+            <p className="text-golffox-gray-medium mb-8 sm:mb-10 text-center text-sm sm:text-base">Use seu CPF e senha para acompanhar sua rota.</p>
 
             <form onSubmit={handleSubmit} className="w-full">
                 <div className="w-full space-y-4">
@@ -45,7 +45,8 @@ const PassengerLoginScreen: React.FC<PassengerLoginScreenProps> = ({ employees, 
                         value={cpf}
                         onChange={(e) => setCpf(e.target.value)}
                         disabled={isLoading}
-                        className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none"
+                        className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none text-base"
+                        autoComplete="username"
                     />
                     <input 
                         type="password" 
@@ -53,7 +54,8 @@ const PassengerLoginScreen: React.FC<PassengerLoginScreenProps> = ({ employees, 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         disabled={isLoading}
-                        className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none"
+                        className="w-full p-4 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none text-base"
+                        autoComplete="current-password"
                     />
                 </div>
                 
@@ -62,7 +64,7 @@ const PassengerLoginScreen: React.FC<PassengerLoginScreenProps> = ({ employees, 
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-golffox-orange-primary text-white font-bold py-4 rounded-lg mt-6 hover:bg-orange-600 transition-all duration-300 transform hover:scale-105 disabled:bg-golffox-gray-medium disabled:cursor-not-allowed flex items-center justify-center"
+                    className="w-full bg-golffox-orange-primary text-white font-bold py-4 rounded-lg mt-6 hover:bg-orange-600 transition-all duration-300 transform hover:scale-105 disabled:bg-golffox-gray-medium disabled:cursor-not-allowed flex items-center justify-center touch-manipulation no-tap-highlight min-h-[48px]"
                 >
                     {isLoading ? (
                         <>

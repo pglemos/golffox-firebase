@@ -9,12 +9,12 @@ const InfoCard: React.FC<{
   icon: React.ReactNode;
   borderColor: string;
 }> = ({ title, value, icon, borderColor }) => (
-  <div className={`bg-golffox-white rounded-lg shadow-md p-6 flex flex-col justify-between border-t-4 ${borderColor}`}>
+  <div className={`bg-golffox-white rounded-lg shadow-md p-4 sm:p-6 flex flex-col justify-between border-t-4 ${borderColor}`}>
     <div className="flex items-center justify-between">
-      <h3 className="text-lg font-medium text-golffox-gray-medium">{title}</h3>
+      <h3 className="text-sm sm:text-lg font-medium text-golffox-gray-medium">{title}</h3>
       <div className="text-golffox-orange-primary">{icon}</div>
     </div>
-    <p className="text-4xl font-bold text-golffox-gray-dark mt-2">{value}</p>
+    <p className="text-2xl sm:text-4xl font-bold text-golffox-gray-dark mt-2">{value}</p>
   </div>
 );
 
@@ -25,8 +25,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-golffox-gray-dark mb-6">Dashboard</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <h2 className="text-2xl sm:text-3xl font-bold text-golffox-gray-dark mb-4 sm:mb-6">Dashboard</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <InfoCard
           title="Colaboradores em Trânsito"
           value={totalPassengers.toString()}
@@ -53,10 +53,10 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-       <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-golffox-gray-dark mb-4">Visão Geral Rápida</h3>
-            <p className="text-golffox-gray-medium">
-                Bem-vindo ao painel de gestão da Golffox. Aqui você pode monitorar todas as operações em tempo real. Utilize o menu à esquerda para navegar entre as seções de mapa, rotas, alertas e relatórios detalhados.
+       <div className="mt-6 sm:mt-8 bg-white p-4 sm:p-6 rounded-lg shadow-md">
+            <h3 className="text-lg sm:text-xl font-bold text-golffox-gray-dark mb-3 sm:mb-4">Visão Geral Rápida</h3>
+            <p className="text-sm sm:text-base text-golffox-gray-medium">
+                Bem-vindo ao painel de gestão da Golffox. Aqui você pode monitorar todas as operações em tempo real. Utilize o menu para navegar entre as seções de mapa, rotas, alertas e relatórios detalhados.
             </p>
         </div>
     </div>
