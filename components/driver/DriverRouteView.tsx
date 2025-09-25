@@ -124,14 +124,14 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                 position: startLocation,
                 map: map,
                 title: 'Ponto de Partida',
+                zIndex: 1000,
                 icon: {
                     path: window.google.maps.SymbolPath.CIRCLE,
                     fillColor: '#10B981',
                     fillOpacity: 1,
                     strokeColor: '#ffffff',
                     strokeWeight: 3,
-                    scale: 8,
-                    zIndex: 1000
+                    scale: 8
                 }
             });
 
@@ -140,14 +140,14 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                 position: destination,
                 map: map,
                 title: destinationCompany.name,
+                zIndex: 1000,
                 icon: {
                     path: window.google.maps.SymbolPath.CIRCLE,
                     fillColor: '#EF4444',
                     fillOpacity: 1,
                     strokeColor: '#ffffff',
                     strokeWeight: 3,
-                    scale: 10,
-                    zIndex: 1000
+                    scale: 10
                 }
             });
 
@@ -157,6 +157,7 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                     position: new window.google.maps.LatLng(passenger.position.lat, passenger.position.lng),
                     map: map,
                     title: `${index + 1}. ${passenger.name}`,
+                    zIndex: 999,
                     label: {
                         text: (index + 1).toString(),
                         color: 'white',
@@ -168,8 +169,7 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                         fillOpacity: 1,
                         strokeColor: '#ffffff',
                         strokeWeight: 2,
-                        scale: 8,
-                        zIndex: 999
+                        scale: 8
                     }
                 });
             });

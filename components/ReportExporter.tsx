@@ -31,14 +31,14 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({ onClose }) => {
   } = useReportExport();
 
   const { 
-    performanceMetrics, 
+    performance, 
     routeAnalytics, 
     vehicleAnalytics, 
     kpis 
   } = useAnalytics();
 
   const { vehicles } = useVehicleTracking();
-  const { optimizedRoutes } = useRouteOptimization();
+  const { state: routeOptimizationState } = useRouteOptimization();
 
   const reportTypes = [
     {
@@ -121,14 +121,14 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({ onClose }) => {
         switch (reportType) {
           case 'analytics':
             await exportConsolidatedReport({
-              performance: performanceMetrics,
+              performance,
               routeAnalytics,
               vehicleAnalytics,
               kpis
             }, selectedFormat);
             break;
           case 'routes':
-            await exportRouteReport(optimizedRoutes, selectedFormat);
+            await exportRouteReport(routeOptimizationState.optimizationHistory, selectedFormat);
             break;
           case 'vehicles':
             await exportVehicleReport(vehicles, selectedFormat);
@@ -143,11 +143,11 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({ onClose }) => {
           switch (reportType) {
             case 'analytics':
               return {
-                data: { performance: performanceMetrics, routeAnalytics, vehicleAnalytics, kpis },
+                data: { performance, routeAnalytics, vehicleAnalytics, kpis },
                 type: 'consolidated' as const
               };
             case 'routes':
-              return { data: optimizedRoutes, type: 'route' as const };
+              return { data: routeOptimizationState.optimizationHistory, type: 'route' as const };
             case 'vehicles':
               return { data: vehicles, type: 'vehicle' as const };
             case 'kpis':

@@ -96,8 +96,9 @@ export const useAdvancedFilters = <T extends FilterableItem>(
 
       // Tratamento especial para datas
       if (sortBy === 'date') {
-        aValue = aValue ? new Date(aValue as string).getTime() : 0;
-        bValue = bValue ? new Date(bValue as string).getTime() : 0;
+        const aTime = aValue ? new Date(aValue as string).getTime() : 0;
+        const bTime = bValue ? new Date(bValue as string).getTime() : 0;
+        return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
       }
 
       // Tratamento especial para números
@@ -106,8 +107,8 @@ export const useAdvancedFilters = <T extends FilterableItem>(
       }
 
       // Tratamento para strings
-      const aStr = (aValue || '').toString().toLowerCase();
-      const bStr = (bValue || '').toString().toLowerCase();
+      const aStr = String(aValue || '').toLowerCase();
+      const bStr = String(bValue || '').toLowerCase();
 
       if (sortOrder === 'asc') {
         return aStr.localeCompare(bStr);

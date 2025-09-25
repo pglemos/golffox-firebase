@@ -80,9 +80,9 @@ const RealTimeMap: React.FC = () => {
               status: 'error',
               message: (
                 <>
-                  <strong>Ação Necessária: Habilitar "Directions API"</strong>
-                  <p className="mt-2 text-sm">O cálculo de rotas falhou porque a sua chave de API do Google Maps não tem permissão para usar a <strong>"Directions API"</strong>.</p>
-                  <p className="mt-3 font-semibold text-sm">Solução: Vá ao seu painel do Google Cloud, encontre a chave de API que você está usando e ative a "Directions API" para ela.</p>
+                  <strong>Ação Necessária: Habilitar &quot;Directions API&quot;</strong>
+                  <p className="mt-2 text-sm">O cálculo de rotas falhou porque a sua chave de API do Google Maps não tem permissão para usar a <strong>&quot;Directions API&quot;</strong>.</p>
+                  <p className="mt-3 font-semibold text-sm">Solução: Vá ao seu painel do Google Cloud, encontre a chave de API que você está usando e ative a &quot;Directions API&quot; para ela.</p>
                 </>
               )
             };
@@ -359,7 +359,7 @@ const RealTimeMap: React.FC = () => {
         origin: vehicle.position,
         destination: route.passengers.list[route.passengers.list.length - 1].position,
         waypoints: waypoints,
-        travelMode: 'DRIVING',
+        travelMode: google.maps.TravelMode.DRIVING,
       };
 
       directionsService.route(request, (result: any, status: any) => {
@@ -380,8 +380,8 @@ const RealTimeMap: React.FC = () => {
     let tripStartTime = Date.now();
     const totalDuration = directionsResult.routes[0].legs.reduce((acc: number, leg: any) => acc + leg.duration.value, 0);
 
-    // Usar o status original preservado do veículo selecionado
-    const busStatus = vehicle.originalBusStatus || 'moving'; // fallback seguro
+    // Usar o status do veículo convertido para busStatus
+    const busStatus = vehicleStatusToBusStatus(vehicle.status);
     const animatedBusIcon = createBusMapIcon(busStatus, 36);
     
     animatedVehicleMarkerRef.current = new window.google.maps.Marker({
@@ -448,9 +448,6 @@ const RealTimeMap: React.FC = () => {
     markersRef.current = registeredVehicles.map((vehicle: Vehicle) => {
       const busStatus = vehicleStatusToBusStatus(vehicle.status, vehicle.id, vehicle.position, vehicle.routeId);
       const busIcon = createBusMapIcon(busStatus, 32);
-      
-      // Armazenar o status original no veículo para uso posterior
-      vehicle.originalBusStatus = busStatus;
       
       const marker = new Marker({
         position: vehicle.position,

@@ -17,7 +17,7 @@ export class MockTravelTimeService {
   }
 
   private generateTrafficCondition(): TrafficCondition {
-    const conditions: TrafficCondition[] = ['light', 'moderate', 'heavy'];
+    const conditions: TrafficCondition[] = [TrafficCondition.LIGHT, TrafficCondition.MODERATE, TrafficCondition.HEAVY];
     return conditions[Math.floor(Math.random() * conditions.length)];
   }
 
@@ -34,10 +34,12 @@ export class MockTravelTimeService {
       const distance = isLast ? remainingDistance : Math.round((remainingDistance / (numSegments - i)) * 100) / 100;
 
       segments.push({
-        instruction: `Segmento ${i + 1}: ${this.getRandomInstruction()}`,
+        from: `Ponto ${i}`,
+        to: `Ponto ${i + 1}`,
         duration,
         distance,
-        trafficCondition: this.generateTrafficCondition()
+        trafficDelay: Math.floor(Math.random() * 5), // 0-5 minutos de atraso
+        passengerPickup: undefined
       });
 
       remainingDuration -= duration;
@@ -66,13 +68,14 @@ export class MockTravelTimeService {
     for (let i = 0; i < numAlternatives; i++) {
       const durationVariance = this.generateRandomTime(0, mainDuration * 0.3);
       const distanceVariance = this.generateRandomDistance(0, mainDistance * 0.2);
+      const alternativeDuration = Math.max(mainDuration + durationVariance, 5);
       
       alternatives.push({
         name: `Rota Alternativa ${i + 1}`,
-        duration: Math.max(mainDuration + durationVariance, 5),
+        duration: alternativeDuration,
         distance: Math.max(mainDistance + distanceVariance, 1),
-        trafficCondition: this.generateTrafficCondition(),
-        description: `Via ${this.getRandomRoadName()}`
+        trafficDelay: Math.floor(Math.random() * 10), // 0-10 minutos de atraso
+        savings: Math.max(mainDuration - alternativeDuration, 0) // tempo economizado
       });
     }
 
@@ -105,8 +108,6 @@ export class MockTravelTimeService {
     
     // Aplica modificadores baseados nas opções
     let duration = baseDuration;
-    if (options?.avoidTolls) duration += this.generateRandomTime(5, 3);
-    if (options?.avoidHighways) duration += this.generateRandomTime(8, 5);
 
     const trafficCondition = this.generateTrafficCondition();
     const trafficMultiplier = trafficCondition === 'heavy' ? 1.4 : trafficCondition === 'moderate' ? 1.2 : 1.0;
@@ -117,15 +118,12 @@ export class MockTravelTimeService {
 
     return {
       routeId,
-      origin: route.origin,
-      destination: route.destination,
-      duration,
-      distance: baseDistance,
-      trafficCondition,
+      totalDuration: duration,
+      totalDistance: baseDistance,
+      trafficConditions: trafficCondition,
       segments,
-      alternatives,
-      lastUpdated: new Date(),
-      confidence: Math.random() * 0.3 + 0.7 // 70-100% de confiança
+      alternativeRoutes: alternatives,
+      estimatedArrival: new Date(Date.now() + duration * 60000)
     };
   }
 
@@ -141,8 +139,6 @@ export class MockTravelTimeService {
     const baseDistance = this.generateRandomDistance(10, 6);
     
     let duration = baseDuration;
-    if (options?.avoidTolls) duration += this.generateRandomTime(4, 2);
-    if (options?.avoidHighways) duration += this.generateRandomTime(6, 4);
 
     const trafficCondition = this.generateTrafficCondition();
     const trafficMultiplier = trafficCondition === 'heavy' ? 1.3 : trafficCondition === 'moderate' ? 1.15 : 1.0;
@@ -153,15 +149,12 @@ export class MockTravelTimeService {
 
     return {
       routeId: `${origin}-${destination}`,
-      origin,
-      destination,
-      duration,
-      distance: baseDistance,
-      trafficCondition,
+      totalDuration: duration,
+      totalDistance: baseDistance,
+      trafficConditions: trafficCondition,
       segments,
-      alternatives,
-      lastUpdated: new Date(),
-      confidence: Math.random() * 0.2 + 0.8
+      alternativeRoutes: alternatives,
+      estimatedArrival: new Date(Date.now() + duration * 60000)
     };
   }
 
@@ -178,8 +171,8 @@ export class MockTravelTimeService {
           const estimate = await this.calculateRouteTime(routeId);
           updates.push({
             routeId,
-            duration: estimate.duration,
-            trafficCondition: estimate.trafficCondition,
+            duration: estimate.totalDuration,
+            trafficCondition: estimate.trafficConditions,
             timestamp: new Date()
           });
         } catch (error) {

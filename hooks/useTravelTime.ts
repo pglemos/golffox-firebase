@@ -16,7 +16,7 @@ export interface TravelTimeState {
 }
 
 export interface TravelTimeActions {
-  calculateRouteTime: (routeId: string, options?: TravelTimeOptions) => Promise<void>;
+  calculateRouteTime: (route: Route, options?: TravelTimeOptions) => Promise<void>;
   calculatePointToPointTime: (origin: string, destination: string) => Promise<TravelTimeEstimate | null>;
   startTrafficMonitoring: (routeId: string) => void;
   stopTrafficMonitoring: (routeId: string) => void;
@@ -49,10 +49,11 @@ export const useTravelTime = (): TravelTimeHookReturn => {
   
   const activeMonitors = useRef<Set<string>>(new Set());
   const routeRefs = useRef<Map<string, Route>>(new Map());
+  const intervalRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  // Função para calcular tempo de rota
-  const calculateRouteTime = useCallback(async (routeId: string, options?: TravelTimeOptions) => {
-    // Marcar como carregando
+  // Função principal para calcular tempo de viagem
+  const calculateRouteTime = useCallback(async (route: Route, options: TravelTimeOptions = {}) => {
+    const routeId = route.id;
     setLoading(prev => new Set([...prev, routeId]));
     setErrors(prev => {
       const newErrors = new Map(prev);
@@ -60,18 +61,18 @@ export const useTravelTime = (): TravelTimeHookReturn => {
       return newErrors;
     });
 
+    // Armazenar referência da rota
+    routeRefs.current.set(routeId, route);
+
     try {
       const estimate = await mockTravelTimeService.calculateRouteTime(routeId, options);
       
-      // Atualizar estimativa
       setEstimates(prev => new Map([...prev, [routeId, estimate]]));
       setLastUpdated(prev => new Map([...prev, [routeId, new Date()]]));
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       setErrors(prev => new Map([...prev, [routeId, errorMessage]]));
     } finally {
-      // Remover do carregamento
       setLoading(prev => {
         const newLoading = new Set(prev);
         newLoading.delete(routeId);
@@ -110,13 +111,20 @@ export const useTravelTime = (): TravelTimeHookReturn => {
     }, 30000); // Atualizar a cada 30 segundos
 
     // Armazenar referência do interval para poder parar depois
-    activeMonitors.current.add(routeId);
+    intervalRefs.current.set(routeId, interval);
   }, []);
 
   // Função para parar monitoramento de tráfego
   const stopTrafficMonitoring = useCallback((routeId: string) => {
     if (!activeMonitors.current.has(routeId)) {
       return; // Não está sendo monitorado
+    }
+
+    // Limpar o interval
+    const interval = intervalRefs.current.get(routeId);
+    if (interval) {
+      clearInterval(interval);
+      intervalRefs.current.delete(routeId);
     }
 
     activeMonitors.current.delete(routeId);
@@ -150,13 +158,15 @@ export const useTravelTime = (): TravelTimeHookReturn => {
 
   // Função para limpar todas as estimativas
   const clearAllEstimates = useCallback(() => {
-    // Parar todos os monitoramentos
-    activeMonitors.current.forEach(routeId => {
-      mockTravelTimeService.stopTrafficMonitoring(routeId);
+    // Parar todos os monitoramentos e limpar intervalos
+    intervalRefs.current.forEach((interval, routeId) => {
+      clearInterval(interval);
+      mockTravelTimeService.stopTrafficMonitoring();
     });
     
     activeMonitors.current.clear();
     routeRefs.current.clear();
+    intervalRefs.current.clear();
     setEstimates(new Map());
     setErrors(new Map());
     setLastUpdated(new Map());

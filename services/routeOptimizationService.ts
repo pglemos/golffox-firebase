@@ -1,43 +1,5 @@
 import type { Passenger, Company } from '../types';
 
-// Global declarations for Google Maps API
-declare global {
-    namespace google {
-        namespace maps {
-            class LatLng {
-                constructor(lat: number, lng: number);
-                lat(): number;
-                lng(): number;
-            }
-            
-            class DirectionsService {
-                route(request: any, callback: (result: any, status: any) => void): void;
-            }
-            
-            enum DirectionsStatus {
-                OK = 'OK'
-            }
-            
-            interface DirectionsLeg {
-                distance?: { value: number };
-                duration?: { value: number };
-            }
-            
-            interface DirectionsRequest {
-                origin: LatLng;
-                destination: LatLng;
-                waypoints?: { location: LatLng; stopover: boolean }[];
-                travelMode: TravelMode;
-                optimizeWaypoints?: boolean;
-            }
-            
-            enum TravelMode {
-                DRIVING = 'DRIVING'
-            }
-        }
-    }
-}
-
 export interface OptimizedRoute {
     waypoints: google.maps.LatLng[];
     orderedPassengers: Passenger[];

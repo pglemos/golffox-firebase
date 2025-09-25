@@ -68,7 +68,7 @@ const TravelTimeEstimator: React.FC<TravelTimeEstimatorProps> = ({
   // Calcular estimativa para uma rota
   const handleCalculateRoute = async (route: Route) => {
     setSelectedRoutes(prev => new Set(prev).add(route.id));
-    await calculateRouteTime(route.id);
+    await calculateRouteTime(route);
   };
 
   // Alternar monitoramento de trânsito
@@ -211,7 +211,7 @@ const TravelTimeEstimator: React.FC<TravelTimeEstimatorProps> = ({
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
                         <Users className="w-4 h-4" />
-                        <span>{route.passengers.length} passageiros</span>
+                        <span>{route.passengers.list.length} passageiros</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <RouteIcon className="w-4 h-4" />
@@ -362,7 +362,7 @@ const TravelTimeEstimator: React.FC<TravelTimeEstimatorProps> = ({
                 {!estimate && !error && !loading && (
                   <div className="text-center py-8 text-gray-500">
                     <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>Clique em "Calcular" para obter a estimativa de tempo</p>
+                    <p>Clique em &quot;Calcular&quot; para obter a estimativa de tempo</p>
                   </div>
                 )}
               </div>

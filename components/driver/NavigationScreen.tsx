@@ -125,14 +125,14 @@ const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
                     const currentMarker = new window.google.maps.Marker({
                         position: origin,
                         map: map,
+                        zIndex: 1000,
                         icon: {
                             path: window.google.maps.SymbolPath.CIRCLE,
                             scale: 12,
                             fillColor: "#002D56",
                             fillOpacity: 1,
                             strokeWeight: 3,
-                            strokeColor: 'white',
-                            zIndex: 1000,
+                            strokeColor: 'white'
                         },
                         title: 'Posição Atual'
                     });
@@ -198,31 +198,50 @@ const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
 
     return (
         <div className="flex flex-col h-full bg-golffox-blue-dark text-white">
-            <div className="bg-golffox-blue-light p-6 shadow-lg z-10 animate-fade-in-down">
+            <div className="bg-golffox-blue-light p-3 sm:p-4 md:p-6 shadow-lg z-10 animate-fade-in-down">
                 <div className="flex items-center">
-                    <div className="mr-4"><IconComponent className="h-16 w-16" /></div>
-                    <div>
-                        <h1 className="text-3xl font-bold">{currentDirection.instruction}</h1>
-                        <p className="text-2xl text-white/80">{currentDirection.distance}</p>
+                    <div className="mr-2 sm:mr-3 md:mr-4">
+                        <IconComponent className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">{currentDirection.instruction}</h1>
+                        <p className="text-base sm:text-xl md:text-2xl text-white/80">{currentDirection.distance}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="flex-grow relative bg-gray-400">
+            <div className="flex-grow relative bg-gray-400 min-h-0">
                 {mapStatus === 'error' && <MapApiKeyWarning />}
-                {mapStatus === 'loading' && <div className="w-full h-full flex items-center justify-center bg-gray-200"><p className="text-golffox-gray-medium">Carregando Mapa...</p></div>}
+                {mapStatus === 'loading' && (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <p className="text-golffox-gray-medium text-sm sm:text-base">Carregando Mapa...</p>
+                    </div>
+                )}
                 <div ref={mapRef} className={`w-full h-full ${mapStatus !== 'loaded' ? 'invisible' : ''}`} />
             </div>
 
-            <footer className="bg-golffox-blue-dark/80 backdrop-blur-sm p-4 border-t border-white/10 z-10">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="text-center"><p className="text-sm opacity-70">Velocidade</p><p className="text-2xl font-bold">58 <span className="text-lg opacity-70">km/h</span></p></div>
-                    <div className="text-center"><p className="text-sm opacity-70">Chegada (ETA)</p><p className="text-2xl font-bold">06:45</p></div>
-                    <div className="text-center"><p className="text-sm opacity-70">Restante</p><p className="text-2xl font-bold">12 <span className="text-lg opacity-70">km</span></p></div>
+            <footer className="bg-golffox-blue-dark/80 backdrop-blur-sm p-3 sm:p-4 border-t border-white/10 z-10 flex-shrink-0">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="text-center">
+                        <p className="text-xs sm:text-sm opacity-70">Velocidade</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold">
+                            58 <span className="text-sm sm:text-base md:text-lg opacity-70">km/h</span>
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs sm:text-sm opacity-70">Chegada (ETA)</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold">06:45</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs sm:text-sm opacity-70">Restante</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold">
+                            12 <span className="text-sm sm:text-base md:text-lg opacity-70">km</span>
+                        </p>
+                    </div>
                 </div>
                 <button
                     onClick={onEndRoute}
-                    className="w-full bg-golffox-red text-white font-bold py-4 rounded-lg hover:bg-red-700 transition-colors"
+                    className="w-full bg-golffox-red text-white font-bold py-3 sm:py-4 rounded-lg hover:bg-red-700 active:bg-red-800 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base min-h-[48px]"
                 >
                     Finalizar Rota
                 </button>

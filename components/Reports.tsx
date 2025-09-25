@@ -43,7 +43,7 @@ const Reports: React.FC = () => {
       <div className="bg-golffox-white p-6 rounded-lg shadow-md">
         <h3 className="text-xl font-semibold text-golffox-gray-dark mb-2">Faça uma pergunta sobre as operações</h3>
         <p className="text-golffox-gray-medium mb-4">
-            Exemplos: "Qual rota teve o maior atraso?", "Liste os veículos com problemas.", "Resuma os alertas críticos de hoje."
+            Exemplos: &quot;Qual rota teve o maior atraso?&quot;, &quot;Liste os veículos com problemas.&quot;, &quot;Resuma os alertas críticos de hoje.&quot;
         </p>
         <div className="flex items-center space-x-2">
           <input

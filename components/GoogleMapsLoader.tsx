@@ -3,9 +3,6 @@ import { GOOGLE_MAPS_CONFIG } from '../config';
 
 declare global {
   interface Window {
-    google: any;
-    googleMapsApiLoaded: boolean | 'error' | 'loading';
-    markerClustererApiLoaded: boolean;
     gm_authFailure?: () => void;
     initMap?: () => void;
   }
@@ -19,6 +16,7 @@ const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({ children }) => {
   useEffect(() => {
     // Se não há chave da API, não tenta carregar
     if (!GOOGLE_MAPS_CONFIG.apiKey || GOOGLE_MAPS_CONFIG.apiKey.trim() === '') {
+      console.error('Google Maps API key not found. Please check your environment variables.');
       window.googleMapsApiLoaded = 'error';
       return;
     }
@@ -38,8 +36,23 @@ const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({ children }) => {
     // Marcar como carregando
     window.googleMapsApiLoaded = 'loading';
 
+    // Configurar timeout para evitar carregamento infinito
+    const timeoutId = setTimeout(() => {
+      if (window.googleMapsApiLoaded === 'loading') {
+        console.error('Timeout ao carregar Google Maps API. Verifique se a chave da API está configurada corretamente e se as APIs necessárias estão habilitadas (Maps JavaScript API, Directions API, Geometry API).');
+        window.googleMapsApiLoaded = 'error';
+        
+        // Remover script se ainda estiver carregando
+        const script = document.getElementById('google-maps-script');
+        if (script) {
+          script.remove();
+        }
+      }
+    }, 15000); // 15 segundos de timeout
+
     // Configurar handler de erro de autenticação
     window.gm_authFailure = () => {
+      clearTimeout(timeoutId);
       console.error("Google Maps API authentication failed. Check your API key and ensure it has the correct permissions.");
       console.error("Required APIs: Maps JavaScript API, Places API, Geometry API");
       console.error("Optional APIs for full functionality: Directions API (for route calculation)");
@@ -50,6 +63,7 @@ const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({ children }) => {
     // Definir a função initMap globalmente antes de carregar o script
     if (!window.initMap) {
       window.initMap = () => {
+        clearTimeout(timeoutId);
         window.googleMapsApiLoaded = true;
         console.log('Google Maps API loaded successfully');
       };
@@ -63,6 +77,7 @@ const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({ children }) => {
     script.id = 'google-maps-script';
     
     script.onerror = () => {
+      clearTimeout(timeoutId);
       console.error('Failed to load Google Maps script');
       window.googleMapsApiLoaded = 'error';
     };

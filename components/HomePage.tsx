@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 const HomePage: React.FC = () => {
   return (
@@ -17,7 +17,7 @@ const HomePage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Link
-            to="/painel"
+            href="/painel"
             className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
           >
             <div className="text-xl font-semibold mb-2">Painel de Gestão</div>
@@ -25,7 +25,7 @@ const HomePage: React.FC = () => {
           </Link>
 
           <Link
-            to="/motorista"
+            href="/motorista"
             className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
           >
             <div className="text-xl font-semibold mb-2">App do Motorista</div>
@@ -33,7 +33,7 @@ const HomePage: React.FC = () => {
           </Link>
 
           <Link
-            to="/passageiro"
+            href="/passageiro"
             className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
           >
             <div className="text-xl font-semibold mb-2">App do Passageiro</div>
@@ -41,7 +41,7 @@ const HomePage: React.FC = () => {
           </Link>
 
           <Link
-            to="/operador"
+            href="/operador"
             className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
           >
             <div className="text-xl font-semibold mb-2">Portal do Operador</div>
@@ -51,7 +51,7 @@ const HomePage: React.FC = () => {
 
         <div className="text-center">
           <Link
-            to="/admin"
+            href="/admin"
             className="text-gray-500 hover:text-gray-700 text-sm underline"
           >
             Área Administrativa

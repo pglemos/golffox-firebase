@@ -86,7 +86,7 @@ class TravelTimeService {
       );
 
       // Processar segmentos da rota
-      const segments = await this.processRouteSegments(directionsResult, route.passengers);
+      const segments = await this.processRouteSegments(directionsResult, route.passengers.list);
 
       // Calcular condições de trânsito
       const trafficConditions = this.analyzeTrafficConditions(segments);
@@ -138,7 +138,6 @@ class TravelTimeService {
         origins: [origin],
         destinations: [destination],
         travelMode: google.maps.TravelMode.DRIVING,
-        trafficModel: this.trafficModel,
         drivingOptions: {
           departureTime: departureTime,
           trafficModel: this.trafficModel
@@ -214,13 +213,13 @@ class TravelTimeService {
   // Métodos auxiliares privados
 
   private prepareWaypoints(route: Route) {
-    const stops = route.passengers
+    const stops = route.passengers.list
       .filter(p => p.address && p.address.trim() !== '')
       .map(p => ({ location: p.address, stopover: true }));
 
     return {
-      origin: route.startLocation || 'São Paulo, SP',
-      destination: route.endLocation || 'São Paulo, SP',
+      origin: route.origin || 'São Paulo, SP',
+      destination: route.destination || 'São Paulo, SP',
       stops
     };
   }

@@ -287,7 +287,7 @@ const RouteOptimizer: React.FC<RouteOptimizerProps> = ({ onRouteOptimized }) => 
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{passenger.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{passenger.phone}</p>
+                  <p className="text-xs text-gray-500 truncate">{passenger.cpf}</p>
                 </div>
                 <MapPin className="w-4 h-4 text-gray-400" />
               </div>
@@ -390,7 +390,7 @@ const RouteOptimizer: React.FC<RouteOptimizerProps> = ({ onRouteOptimized }) => 
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">{passenger.name}</div>
-                      <div className="text-sm text-gray-600">{passenger.phone}</div>
+                      <div className="text-sm text-gray-600">{passenger.cpf}</div>
                     </div>
                     {pickupTime && (
                       <div className="text-sm text-gray-600">

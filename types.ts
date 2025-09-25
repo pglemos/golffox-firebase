@@ -48,6 +48,9 @@ export interface Route {
   scheduledStart: string;
   actualStart: string;
   punctuality: number; // in minutes, negative is early, positive is late
+  startLocation?: string;
+  destination?: string;
+  origin?: string;
 }
 
 export interface Alert {
@@ -72,7 +75,6 @@ export interface Vehicle {
   lastMaintenance: string;
   nextMaintenance: string;
   isRegistered?: boolean;
-  originalBusStatus?: import('./components/BusIcon3D').BusStatus;
 }
 
 export interface Driver {
@@ -207,19 +209,21 @@ export interface CostControl {
 }
 
 export interface DriverPerformance {
+  id: string;
   driverId: string;
   driverName: string;
+  driverPhoto: string;
   punctualityScore: number; // 0-100
   fuelEfficiencyScore: number; // 0-100
   routeComplianceScore: number; // 0-100
   overallScore: number; // 0-100
-  totalRoutes: number;
-  onTimeRoutes: number;
-  fuelSavings: number; // em %
-  routeDeviations: number;
+  routesCompleted: number;
+  totalSavings: number;
+  deviations: number;
   ranking: number;
   badges: string[]; // badges conquistadas
   level: string; // Bronze, Prata, Ouro, Platina
+  monthlyPoints: number;
 }
 
 export interface OptimizedRoute {

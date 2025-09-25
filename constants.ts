@@ -414,6 +414,13 @@ export const MOCK_CHECKLIST_ITEMS: { [category: string]: ChecklistItem[] } = {
         { id: 's1', label: 'Cintos de segurança', isCritical: true },
         { id: 's2', label: 'Extintor de incêndio (validade)', isCritical: true },
         { id: 's3', label: 'Kit de primeiros socorros', isCritical: false },
+        { id: 's4', label: 'Triângulo de sinalização', isCritical: true },
+        { id: 's5', label: 'Chave de roda e macaco', isCritical: false },
+        { id: 's6', label: 'Estepe calibrado', isCritical: true },
+        { id: 's7', label: 'Lanterna de emergência', isCritical: false },
+        { id: 's8', label: 'Cabo de bateria', isCritical: false },
+        { id: 's9', label: 'Kit de ferramentas básicas', isCritical: false },
+        { id: 's10', label: 'Água para radiador', isCritical: false },
     ],
     'Conforto': [
         { id: 'c1', label: 'Ar condicionado', isCritical: false },

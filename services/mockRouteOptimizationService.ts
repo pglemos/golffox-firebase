@@ -105,14 +105,10 @@ class MockRouteOptimizationService {
           lat: location.lat + (Math.random() - 0.5) * 0.01, // Variação pequena
           lng: location.lng + (Math.random() - 0.5) * 0.01
         },
-        destination: {
-          lat: location.lat + (Math.random() - 0.5) * 0.02,
-          lng: location.lng + (Math.random() - 0.5) * 0.02
-        },
-        pickupTime: new Date(Date.now() + Math.random() * 3600000), // Próxima hora
-        status: 'waiting',
-        phone: `(11) 9${Math.floor(Math.random() * 10000)}-${Math.floor(Math.random() * 10000)}`,
-        company: 'Empresa Demo'
+        pickupTime: new Date(Date.now() + Math.random() * 3600000).toISOString(), // Próxima hora
+        photoUrl: `https://via.placeholder.com/150?text=${names[i % names.length].charAt(0)}`,
+        cpf: `${Math.floor(Math.random() * 100000000000).toString().padStart(11, '0')}`,
+        address: `Endereço ${i + 1}, São Paulo, SP`
       });
     }
 

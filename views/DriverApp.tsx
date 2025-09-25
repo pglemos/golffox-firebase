@@ -93,8 +93,8 @@ const DriverApp: React.FC = () => {
     };
 
     return (
-        <div className="h-full w-full flex items-center justify-center bg-golffox-gray-light p-4">
-            <div className="w-full max-w-sm h-full max-h-[800px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="min-h-screen w-full flex items-center justify-center bg-golffox-gray-light p-2 sm:p-4">
+            <div className="w-full max-w-sm min-h-screen sm:min-h-[600px] sm:max-h-[90vh] bg-white sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
                 {renderContent()}
             </div>
         </div>
