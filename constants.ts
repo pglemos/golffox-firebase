@@ -21,6 +21,8 @@ export const VIEWS = {
   RESCUE: 'Socorro',
   ALERTS: 'Alertas',
   REPORTS: 'Relatórios',
+  ROUTE_HISTORY: 'Histórico de Rotas',
+  COST_CONTROL: 'Controle de Custos',
 } as const;
 
 // Added a constant for all possible access areas for the permissions modal.
@@ -169,6 +171,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     routeId: 'r1',
     lastMaintenance: '2024-05-15',
     nextMaintenance: '2024-08-15',
+    isRegistered: true,
   },
   {
     id: 'v2',
@@ -180,6 +183,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     routeId: 'r2',
     lastMaintenance: '2024-06-01',
     nextMaintenance: '2024-09-01',
+    isRegistered: true,
   },
   {
     id: 'v3',
@@ -191,6 +195,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     routeId: 'r4',
     lastMaintenance: '2024-04-20',
     nextMaintenance: '2024-07-20',
+    isRegistered: true,
   },
   {
     id: 'v4',
@@ -202,6 +207,41 @@ export const MOCK_VEHICLES: Vehicle[] = [
     routeId: 'r3',
     lastMaintenance: '2024-05-30',
     nextMaintenance: '2024-08-30',
+    isRegistered: true,
+  },
+  {
+    id: 'v5',
+    plate: 'JKL-9999',
+    model: 'Ford Transit',
+    driver: 'Ana Costa',
+    status: VehicleStatus.Moving,
+    position: { lat: -23.5520, lng: -46.6340 },
+    routeId: 'r5',
+    lastMaintenance: '2024-06-10',
+    nextMaintenance: '2024-09-10',
+    isRegistered: false, // Veículo não cadastrado - não deve aparecer no mapa
+  },
+  {
+    id: 'v6',
+    plate: 'MNO-8888',
+    model: 'Volkswagen Crafter',
+    driver: 'Roberto Lima',
+    status: VehicleStatus.Stopped,
+    position: { lat: -23.5530, lng: -46.6350 },
+    lastMaintenance: '2024-05-25',
+    nextMaintenance: '2024-08-25',
+    isRegistered: false, // Veículo não cadastrado - não deve aparecer no mapa
+  },
+  {
+    id: 'v7',
+    plate: 'PQR-7777',
+    model: 'Mercedes-Benz Sprinter',
+    driver: 'Fernanda Santos',
+    status: VehicleStatus.Garage,
+    position: { lat: -23.5495, lng: -46.6320 }, // Posição da garagem
+    lastMaintenance: '2024-06-15',
+    nextMaintenance: '2024-09-15',
+    isRegistered: true,
   },
 ];
 

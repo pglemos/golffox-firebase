@@ -11,7 +11,12 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "google.maps"
+    ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,

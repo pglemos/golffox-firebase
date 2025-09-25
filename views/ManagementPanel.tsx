@@ -11,6 +11,8 @@ import DriversManagement from '../components/DriversManagement';
 import RescueDispatch from '../components/RescueDispatch';
 import CompaniesManagement from '../components/CompaniesManagement';
 import PermissionsManagement from '../components/PermissionsManagement';
+import RouteHistory from '../components/RouteHistory';
+import CostControl from '../components/CostControl';
 import type { View, Route, Company, Employee, PermissionProfile } from '../types';
 import { VIEWS } from '../constants';
 
@@ -51,6 +53,10 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({ routes, setRoutes, co
         return <Alerts />;
       case VIEWS.REPORTS:
         return <Reports />;
+      case VIEWS.ROUTE_HISTORY:
+        return <RouteHistory />;
+      case VIEWS.COST_CONTROL:
+        return <CostControl />;
       default:
         return <Dashboard />;
     }

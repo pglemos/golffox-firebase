@@ -1,11 +1,12 @@
-export type View = 'Dashboard' | 'Mapa' | 'Rotas' | 'Veículos' | 'Motoristas' | 'Empresas' | 'Permissões' | 'Socorro' | 'Alertas' | 'Relatórios';
+export type View = 'Dashboard' | 'Mapa' | 'Rotas' | 'Veículos' | 'Motoristas' | 'Empresas' | 'Permissões' | 'Socorro' | 'Alertas' | 'Relatórios' | 'Histórico de Rotas' | 'Controle de Custos';
 export type AppView = 'Painel de Gestão (Golffox)' | 'App do Motorista' | 'App do Passageiro' | 'Portal do Operador';
 export type ClientView = 'Dashboard' | 'Funcionários';
 
 export enum VehicleStatus {
   Moving = 'Em Movimento',
   Stopped = 'Parado',
-  Problem = 'Com Problema'
+  Problem = 'Com Problema',
+  Garage = 'Garagem'
 }
 
 export enum RouteStatus {
@@ -70,6 +71,8 @@ export interface Vehicle {
   routeId?: string;
   lastMaintenance: string;
   nextMaintenance: string;
+  isRegistered?: boolean;
+  originalBusStatus?: import('./components/BusIcon3D').BusStatus;
 }
 
 export interface Driver {
@@ -160,4 +163,81 @@ export interface Direction {
   instruction: string;
   distance: string;
   icon: string; // Changed from React.FC to string to break dependency cycle
+}
+
+export interface RouteHistory {
+  id: string;
+  routeId: string;
+  routeName: string;
+  driverId: string;
+  driverName: string;
+  vehicleId: string;
+  vehiclePlate: string;
+  executionDate: string;
+  startTime: string;
+  endTime: string;
+  totalTime: number; // em minutos
+  totalDistance: number; // em km
+  passengersBoarded: number;
+  passengersNotBoarded: number;
+  totalPassengers: number;
+  fuelConsumption: number; // em litros
+  operationalCost: number; // em reais
+  punctuality: number; // em minutos (negativo = adiantado, positivo = atrasado)
+  routeOptimization: number; // percentual de otimização da rota
+}
+
+export interface CostControl {
+  id: string;
+  routeId: string;
+  routeName: string;
+  period: string; // mensal, semanal, etc.
+  totalKilometers: number;
+  averageFuelConsumption: number; // km/l
+  fuelCost: number; // custo por litro
+  totalFuelCost: number;
+  driverCost: number; // salário + benefícios
+  vehicleMaintenanceCost: number;
+  operationalCost: number; // custo total operacional
+  revenuePerPassenger: number; // receita por passageiro
+  totalRevenue: number;
+  profitMargin: number; // margem de lucro em %
+  costPerKm: number;
+  costPerPassenger: number;
+}
+
+export interface DriverPerformance {
+  driverId: string;
+  driverName: string;
+  punctualityScore: number; // 0-100
+  fuelEfficiencyScore: number; // 0-100
+  routeComplianceScore: number; // 0-100
+  overallScore: number; // 0-100
+  totalRoutes: number;
+  onTimeRoutes: number;
+  fuelSavings: number; // em %
+  routeDeviations: number;
+  ranking: number;
+  badges: string[]; // badges conquistadas
+  level: string; // Bronze, Prata, Ouro, Platina
+}
+
+export interface OptimizedRoute {
+  originalRoute: {
+    distance: number;
+    duration: number;
+    waypoints: Array<{lat: number, lng: number, address: string}>;
+  };
+  optimizedRoute: {
+    distance: number;
+    duration: number;
+    waypoints: Array<{lat: number, lng: number, address: string}>;
+    optimizationPercentage: number;
+  };
+  savings: {
+    timeMinutes: number;
+    distanceKm: number;
+    fuelLiters: number;
+    costReais: number;
+  };
 }

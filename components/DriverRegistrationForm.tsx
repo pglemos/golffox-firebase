@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Driver } from '../types';
 
 interface DriverRegistrationFormProps {
@@ -7,12 +7,26 @@ interface DriverRegistrationFormProps {
     initialData?: Partial<Driver>;
 }
 
+interface FormErrors {
+    [key: string]: string;
+}
+
+interface FileUploads {
+    photo: File | null;
+    transportCourse: File | null;
+    cnhFile: File | null;
+    residenceProof: File | null;
+    courseFile: File | null;
+    toxicologicalExam: File | null;
+    idPhoto: File | null;
+}
+
 const DriverRegistrationForm: React.FC<DriverRegistrationFormProps> = ({
     onSubmit,
     onCancel,
-    initialData = {}
+    initialData = {} as Partial<Driver>
 }) => {
-    const [formData, setFormData] = useState<Partial<Driver>>({
+    const [formData, setFormData] = useState<Partial<Driver>>(() => ({
         // Dados Pessoais
         name: initialData.name || '',
         cpf: initialData.cpf || '',
@@ -32,19 +46,19 @@ const DriverRegistrationForm: React.FC<DriverRegistrationFormProps> = ({
         lastToxicologicalExam: initialData.lastToxicologicalExam || '',
         
         // Vínculo com a Golffox
-        contractType: initialData.contractType || 'CLT',
-        credentialingDate: initialData.credentialingDate || '',
-        status: initialData.status || 'Em análise',
-        linkedCompany: initialData.linkedCompany || '',
+        contractType: initialData?.contractType || 'CLT',
+        credentialingDate: initialData?.credentialingDate || '',
+        status: initialData?.status || 'Ativo',
+        linkedCompany: initialData?.linkedCompany || '',
         
-        // Informações Operacionais
-        assignedRoutes: initialData.assignedRoutes || [],
-        availability: initialData.availability || '',
+        // Rotas e Disponibilidade
+        assignedRoutes: initialData?.assignedRoutes || [],
+        availability: initialData?.availability || '',
         lastUpdate: new Date().toISOString().split('T')[0]
-    });
+    }));
 
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [files, setFiles] = useState<Record<string, File | null>>({
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [files, setFiles] = useState<FileUploads>({
         photo: null,
         transportCourse: null,
         cnhFile: null,
@@ -54,154 +68,434 @@ const DriverRegistrationForm: React.FC<DriverRegistrationFormProps> = ({
         idPhoto: null
     });
 
-    // Funções de validação
-    const validateCPF = (cpf: string): boolean => {
-        const cleanCPF = cpf.replace(/\D/g, '');
-        if (cleanCPF.length !== 11) return false;
-        
-        // Verificação básica de CPF
-        let sum = 0;
-        for (let i = 0; i < 9; i++) {
-            sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+    // Validações melhoradas
+    const validateCPF = useCallback((cpf: string): boolean => {
+        try {
+            const cleanCPF = cpf.replace(/\D/g, '');
+            
+            // Verifica se tem 11 dígitos
+            if (cleanCPF.length !== 11) return false;
+            
+            // Verifica se todos os dígitos são iguais
+            if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+            
+            // Validação do primeiro dígito verificador
+            let sum = 0;
+            for (let i = 0; i < 9; i++) {
+                sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+            }
+            let remainder = (sum * 10) % 11;
+            if (remainder === 10 || remainder === 11) remainder = 0;
+            if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+            
+            // Validação do segundo dígito verificador
+            sum = 0;
+            for (let i = 0; i < 10; i++) {
+                sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+            }
+            remainder = (sum * 10) % 11;
+            if (remainder === 10 || remainder === 11) remainder = 0;
+            return remainder === parseInt(cleanCPF.charAt(10));
+        } catch (error) {
+            console.error('Erro na validação do CPF:', error);
+            return false;
         }
-        let remainder = (sum * 10) % 11;
-        if (remainder === 10 || remainder === 11) remainder = 0;
-        if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+    }, []);
 
-        sum = 0;
-        for (let i = 0; i < 10; i++) {
-            sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+    const validateEmail = useCallback((email: string): boolean => {
+        try {
+            if (!email || email.trim() === '') return false;
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            return emailRegex.test(email.trim());
+        } catch (error) {
+            console.error('Erro na validação do email:', error);
+            return false;
         }
-        remainder = (sum * 10) % 11;
-        if (remainder === 10 || remainder === 11) remainder = 0;
-        return remainder === parseInt(cleanCPF.charAt(10));
-    };
+    }, []);
 
-    const validateEmail = (email: string): boolean => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    };
-
-    const formatCPF = (value: string): string => {
-        const cleanValue = value.replace(/\D/g, '');
-        return cleanValue
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-            .replace(/(-\d{2})\d+?$/, '$1');
-    };
-
-    const formatPhone = (value: string): string => {
-        const cleanValue = value.replace(/\D/g, '');
-        return cleanValue
-            .replace(/(\d{2})(\d)/, '($1) $2')
-            .replace(/(\d{5})(\d)/, '$1-$2')
-            .replace(/(-\d{4})\d+?$/, '$1');
-    };
-
-    const formatCEP = (value: string): string => {
-        const cleanValue = value.replace(/\D/g, '');
-        return cleanValue.replace(/(\d{5})(\d)/, '$1-$2');
-    };
-
-    const handleInputChange = (field: keyof Driver, value: any) => {
-        let formattedValue = value;
-        
-        // Aplicar máscaras
-        if (field === 'cpf') {
-            formattedValue = formatCPF(value);
-        } else if (field === 'phone') {
-            formattedValue = formatPhone(value);
-        } else if (field === 'cep') {
-            formattedValue = formatCEP(value);
+    const validatePhone = useCallback((phone: string): boolean => {
+        try {
+            const cleanPhone = phone.replace(/\D/g, '');
+            return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+        } catch (error) {
+            console.error('Erro na validação do telefone:', error);
+            return false;
         }
+    }, []);
 
-        setFormData(prev => ({
-            ...prev,
-            [field]: formattedValue
-        }));
+    const validateCEP = useCallback((cep: string): boolean => {
+        try {
+            const cleanCEP = cep.replace(/\D/g, '');
+            return cleanCEP.length === 8;
+        } catch (error) {
+            console.error('Erro na validação do CEP:', error);
+            return false;
+        }
+    }, []);
 
-        // Limpar erro do campo quando o usuário começar a digitar
-        if (errors[field]) {
+    const validateCNH = useCallback((cnh: string): boolean => {
+        try {
+            const cleanCNH = cnh.replace(/\D/g, '');
+            return cleanCNH.length === 11;
+        } catch (error) {
+            console.error('Erro na validação da CNH:', error);
+            return false;
+        }
+    }, []);
+
+    const validateDate = useCallback((date: string): boolean => {
+        try {
+            if (!date) return false;
+            const dateObj = new Date(date);
+            return dateObj instanceof Date && !isNaN(dateObj.getTime());
+        } catch (error) {
+            console.error('Erro na validação da data:', error);
+            return false;
+        }
+    }, []);
+
+    // Formatações melhoradas
+    const formatCPF = useCallback((value: string): string => {
+        try {
+            const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+            return cleanValue
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        } catch (error) {
+            console.error('Erro na formatação do CPF:', error);
+            return value;
+        }
+    }, []);
+
+    const formatPhone = useCallback((value: string): string => {
+        try {
+            const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+            if (cleanValue.length <= 10) {
+                return cleanValue
+                    .replace(/(\d{2})(\d)/, '($1) $2')
+                    .replace(/(\d{4})(\d)/, '$1-$2');
+            } else {
+                return cleanValue
+                    .replace(/(\d{2})(\d)/, '($1) $2')
+                    .replace(/(\d{5})(\d)/, '$1-$2');
+            }
+        } catch (error) {
+            console.error('Erro na formatação do telefone:', error);
+            return value;
+        }
+    }, []);
+
+    const formatCEP = useCallback((value: string): string => {
+        try {
+            const cleanValue = value.replace(/\D/g, '').slice(0, 8);
+            return cleanValue.replace(/(\d{5})(\d)/, '$1-$2');
+        } catch (error) {
+            console.error('Erro na formatação do CEP:', error);
+            return value;
+        }
+    }, []);
+
+    const formatCNH = useCallback((value: string): string => {
+        try {
+            const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+            return cleanValue;
+        } catch (error) {
+            console.error('Erro na formatação da CNH:', error);
+            return value;
+        }
+    }, []);
+
+    const handleInputChange = useCallback((field: keyof Driver, value: any) => {
+        try {
+            let formattedValue = value;
+            
+            // Aplicar máscaras baseadas no tipo de campo
+            switch (field) {
+                case 'cpf':
+                    formattedValue = formatCPF(value);
+                    break;
+                case 'phone':
+                    formattedValue = formatPhone(value);
+                    break;
+                case 'cep':
+                    formattedValue = formatCEP(value);
+                    break;
+                case 'cnh':
+                    formattedValue = formatCNH(value);
+                    break;
+                case 'name':
+                    // Capitalizar primeira letra de cada palavra
+                    formattedValue = value.replace(/\b\w/g, (l: string) => l.toUpperCase());
+                    break;
+                case 'email':
+                    formattedValue = value.toLowerCase().trim();
+                    break;
+                default:
+                    formattedValue = value;
+            }
+            
+            setFormData(prev => ({
+                ...prev,
+                [field]: formattedValue
+            }));
+            
+            // Limpar erro do campo quando o usuário começar a digitar
+            if (errors[field]) {
+                setErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors[field];
+                    return newErrors;
+                });
+            }
+        } catch (error) {
+            console.error(`Erro ao atualizar campo ${field}:`, error);
+        }
+    }, [errors, formatCPF, formatPhone, formatCEP, formatCNH]);
+
+    const handleFileChange = useCallback((fileType: keyof FileUploads, file: File | null) => {
+        try {
+            // Validar tipo e tamanho do arquivo
+            if (file) {
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+                
+                if (file.size > maxSize) {
+                    setErrors(prev => ({
+                        ...prev,
+                        [fileType]: 'Arquivo muito grande. Máximo 5MB.'
+                    }));
+                    return;
+                }
+                
+                if (!allowedTypes.includes(file.type)) {
+                    setErrors(prev => ({
+                        ...prev,
+                        [fileType]: 'Tipo de arquivo não permitido. Use JPG, PNG ou PDF.'
+                    }));
+                    return;
+                }
+            }
+            
+            setFiles(prev => ({
+                ...prev,
+                [fileType]: file
+            }));
+            
+            // Limpar erro do arquivo se existir
+            if (errors[fileType]) {
+                setErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors[fileType];
+                    return newErrors;
+                });
+            }
+        } catch (error) {
+            console.error(`Erro ao fazer upload do arquivo ${fileType}:`, error);
             setErrors(prev => ({
                 ...prev,
-                [field]: ''
+                [fileType]: 'Erro ao fazer upload do arquivo.'
             }));
         }
-    };
+    }, [errors]);
 
-    const handleFileChange = (fileType: string, file: File | null) => {
-        setFiles(prev => ({
-            ...prev,
-            [fileType]: file
-        }));
-    };
-
-    const handleRouteChange = (route: string, checked: boolean) => {
-        const currentRoutes = formData.assignedRoutes || [];
-        if (checked) {
-            setFormData(prev => ({
-                ...prev,
-                assignedRoutes: [...currentRoutes, route]
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                assignedRoutes: currentRoutes.filter(r => r !== route)
-            }));
+    const handleRouteChange = useCallback((route: string, checked: boolean) => {
+        try {
+            const currentRoutes = formData.assignedRoutes || [];
+            if (checked) {
+                setFormData(prev => ({
+                    ...prev,
+                    assignedRoutes: [...currentRoutes, route]
+                }));
+            } else {
+                setFormData(prev => ({
+                    ...prev,
+                    assignedRoutes: currentRoutes.filter(r => r !== route)
+                }));
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar rotas:', error);
         }
-    };
+    }, [formData.assignedRoutes]);
 
-    const validateForm = (): boolean => {
-        const newErrors: Record<string, string> = {};
+    const validateForm = useCallback((): boolean => {
+        try {
+            const newErrors: FormErrors = {};
 
-        // Validações obrigatórias - Dados Pessoais
-        if (!formData.name?.trim()) newErrors.name = 'Nome completo é obrigatório';
-        if (!formData.cpf?.trim()) {
-            newErrors.cpf = 'CPF é obrigatório';
-        } else if (!validateCPF(formData.cpf)) {
-            newErrors.cpf = 'CPF inválido';
-        }
-        if (!formData.rg?.trim()) newErrors.rg = 'RG é obrigatório';
-        if (!formData.birthDate) newErrors.birthDate = 'Data de nascimento é obrigatória';
-        if (!formData.phone?.trim()) newErrors.phone = 'Telefone é obrigatório';
-        if (!formData.email?.trim()) {
-            newErrors.email = 'E-mail é obrigatório';
-        } else if (!validateEmail(formData.email)) {
-            newErrors.email = 'E-mail inválido';
-        }
-        if (!formData.address?.trim()) newErrors.address = 'Endereço é obrigatório';
-        if (!formData.cep?.trim()) newErrors.cep = 'CEP é obrigatório';
+            // Validação dos dados pessoais
+            if (!formData.name?.trim()) {
+                newErrors.name = 'Nome é obrigatório';
+            } else if (formData.name.trim().length < 2) {
+                newErrors.name = 'Nome deve ter pelo menos 2 caracteres';
+            }
 
-        // Validações obrigatórias - Dados Profissionais
-        if (!formData.cnh?.trim()) newErrors.cnh = 'CNH é obrigatória';
-        if (!formData.cnhValidity) newErrors.cnhValidity = 'Validade da CNH é obrigatória';
-        if (!formData.lastToxicologicalExam) newErrors.lastToxicologicalExam = 'Data do exame toxicológico é obrigatória';
+            if (!formData.cpf || !validateCPF(formData.cpf)) {
+                newErrors.cpf = 'CPF inválido';
+            }
 
-        // Validações obrigatórias - Vínculo Golffox
-        if (!formData.credentialingDate) newErrors.credentialingDate = 'Data de credenciamento é obrigatória';
-        if (!formData.linkedCompany?.trim()) newErrors.linkedCompany = 'Empresa vinculada é obrigatória';
+            if (!formData.rg?.trim()) {
+                newErrors.rg = 'RG é obrigatório';
+            }
 
-        // Validações de arquivos obrigatórios
-        if (!files.photo) newErrors.photo = 'Foto do motorista é obrigatória';
-        if (!files.cnhFile) newErrors.cnhFile = 'CNH digitalizada é obrigatória';
-        if (!files.residenceProof) newErrors.residenceProof = 'Comprovante de residência é obrigatório';
-        if (!files.toxicologicalExam) newErrors.toxicologicalExam = 'Exame toxicológico é obrigatório';
-        if (!files.idPhoto) newErrors.idPhoto = 'Foto 3x4 é obrigatória';
+            if (!formData.birthDate) {
+                newErrors.birthDate = 'Data de nascimento é obrigatória';
+            } else if (!validateDate(formData.birthDate)) {
+                newErrors.birthDate = 'Data de nascimento inválida';
+            } else {
+                // Verificar se é maior de idade
+                const birthDate = new Date(formData.birthDate);
+                const today = new Date();
+                const age = today.getFullYear() - birthDate.getFullYear();
+                if (age < 18) {
+                    newErrors.birthDate = 'Motorista deve ser maior de idade';
+                }
+            }
 
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+            if (!formData.email || !validateEmail(formData.email)) {
+                newErrors.email = 'Email inválido';
+            }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (validateForm()) {
-            onSubmit({
-                ...formData,
-                id: initialData.id || `d${Date.now()}`
+            if (!formData.phone || !validatePhone(formData.phone)) {
+                newErrors.phone = 'Telefone inválido';
+            }
+
+            if (!formData.address?.trim()) {
+                newErrors.address = 'Endereço é obrigatório';
+            }
+
+            if (!formData.cep || !validateCEP(formData.cep)) {
+                newErrors.cep = 'CEP inválido';
+            }
+
+            // Validação dos dados profissionais
+            if (!formData.cnh || !validateCNH(formData.cnh)) {
+                newErrors.cnh = 'CNH inválida';
+            }
+
+            if (!formData.cnhValidity) {
+                newErrors.cnhValidity = 'Validade da CNH é obrigatória';
+            } else if (!validateDate(formData.cnhValidity)) {
+                newErrors.cnhValidity = 'Data de validade da CNH inválida';
+            } else {
+                // Verificar se a CNH não está vencida
+                const cnhValidity = new Date(formData.cnhValidity);
+                const today = new Date();
+                if (cnhValidity < today) {
+                    newErrors.cnhValidity = 'CNH está vencida';
+                }
+            }
+
+            if (!formData.cnhCategory) {
+                newErrors.cnhCategory = 'Categoria da CNH é obrigatória';
+            }
+
+            if (!formData.transportCourseValidity) {
+                newErrors.transportCourseValidity = 'Validade do curso de transporte é obrigatória';
+            } else if (!validateDate(formData.transportCourseValidity)) {
+                newErrors.transportCourseValidity = 'Data de validade do curso inválida';
+            }
+
+            if (!formData.lastToxicologicalExam) {
+                newErrors.lastToxicologicalExam = 'Data do último exame toxicológico é obrigatória';
+            } else if (!validateDate(formData.lastToxicologicalExam)) {
+                newErrors.lastToxicologicalExam = 'Data do exame toxicológico inválida';
+            }
+
+            // Validação do vínculo Golffox
+            if (!formData.linkedCompany?.trim()) {
+                newErrors.linkedCompany = 'Empresa vinculada é obrigatória';
+            }
+
+            if (!formData.credentialingDate) {
+                newErrors.credentialingDate = 'Data de credenciamento é obrigatória';
+            } else if (!validateDate(formData.credentialingDate)) {
+                newErrors.credentialingDate = 'Data de credenciamento inválida';
+            }
+
+            // Validação de arquivos obrigatórios
+            const requiredFiles: (keyof FileUploads)[] = [
+                'photo', 'cnhFile', 'residenceProof', 'transportCourse', 'toxicologicalExam'
+            ];
+
+            requiredFiles.forEach(fileType => {
+                if (!files[fileType]) {
+                    const fileNames = {
+                        photo: 'Foto',
+                        cnhFile: 'Arquivo da CNH',
+                        residenceProof: 'Comprovante de residência',
+                        transportCourse: 'Curso de transporte',
+                        toxicologicalExam: 'Exame toxicológico'
+                    };
+                    newErrors[fileType] = `${fileNames[fileType]} é obrigatório`;
+                }
             });
+
+            setErrors(newErrors);
+            return Object.keys(newErrors).length === 0;
+        } catch (error) {
+            console.error('Erro na validação do formulário:', error);
+            setErrors({ general: 'Erro na validação do formulário' });
+            return false;
         }
-    };
+    }, [formData, files, validateCPF, validateEmail, validatePhone, validateCEP, validateCNH, validateDate]);
+
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        try {
+            if (!validateForm()) {
+                // Focar no primeiro campo com erro
+                const firstErrorField = Object.keys(errors)[0];
+                if (firstErrorField) {
+                    const element = document.querySelector(`[name="${firstErrorField}"]`) as HTMLElement;
+                    element?.focus();
+                }
+                return;
+            }
+
+            // Preparar dados do motorista
+            const driverData: Partial<Driver> = {
+                ...formData,
+                id: initialData?.id || `driver_${Date.now()}`,
+                photoUrl: files.photo ? URL.createObjectURL(files.photo) : '',
+                lastUpdate: new Date().toISOString().split('T')[0]
+            };
+
+            // Simular upload de arquivos (em produção, seria feito para um servidor)
+            if (files.photo) {
+                // Aqui seria feito o upload real do arquivo
+                console.log('Uploading photo:', files.photo.name);
+            }
+
+            await onSubmit(driverData);
+        } catch (error) {
+            console.error('Erro ao submeter formulário:', error);
+            setErrors(prev => ({
+                ...prev,
+                general: 'Erro ao salvar dados do motorista. Tente novamente.'
+            }));
+        }
+    }, [formData, files, initialData?.id, onSubmit, validateForm, errors]);
+
+    const handleCancel = useCallback(() => {
+        try {
+            // Limpar arquivos selecionados
+            setFiles({
+                photo: null,
+                transportCourse: null,
+                cnhFile: null,
+                residenceProof: null,
+                courseFile: null,
+                toxicologicalExam: null,
+                idPhoto: null
+            });
+            
+            onCancel();
+        } catch (error) {
+            console.error('Erro ao cancelar:', error);
+            onCancel();
+        }
+    }, [onCancel]);
 
     const availableRoutes = ['Rota 1', 'Rota 2', 'Rota 3', 'Rota 4', 'Rota 5', 'Rota 6'];
 
@@ -210,7 +504,7 @@ const DriverRegistrationForm: React.FC<DriverRegistrationFormProps> = ({
             <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                     <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                        {initialData.id ? 'Editar Motorista' : 'Cadastrar Novo Motorista'}
+                        {initialData?.id ? 'Editar Motorista' : 'Cadastrar Novo Motorista'}
                     </h2>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
@@ -683,7 +977,7 @@ const DriverRegistrationForm: React.FC<DriverRegistrationFormProps> = ({
                         <div className="flex justify-end space-x-4 pt-6 border-t">
                             <button
                                 type="button"
-                                onClick={onCancel}
+                                onClick={handleCancel}
                                 className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 Cancelar
@@ -692,7 +986,7 @@ const DriverRegistrationForm: React.FC<DriverRegistrationFormProps> = ({
                                 type="submit"
                                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                                {initialData.id ? 'Atualizar' : 'Cadastrar'} Motorista
+                                {initialData?.id ? 'Atualizar' : 'Cadastrar'} Motorista
                             </button>
                         </div>
                     </form>

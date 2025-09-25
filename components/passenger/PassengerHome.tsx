@@ -70,14 +70,39 @@ const PassengerHome: React.FC<PassengerHomeProps> = ({ user }) => {
         new Polyline({ path: routePath, geodesic: true, strokeColor: '#004A8D', strokeOpacity: 0.5, strokeWeight: 4, map });
         new Marker({ position: passengerStop, map, title: 'Seu Ponto' });
 
+        // Importar a função createBusMapIcon se não estiver importada
         const busIcon = {
-            path: 'M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 013.375-3.375h9.75a3.375 3.375 0 013.375 3.375v1.875m-17.25 4.5h15M6.375 12h11.25',
-            fillColor: '#FF5F00',
-            fillOpacity: 1,
-            strokeWeight: 0,
-            rotation: 0,
-            scale: 1,
-            anchor: new window.google.maps.Point(12, 12),
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="busGradient-moving" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#4ADE80" />
+                    <stop offset="50%" stop-color="#22C55E" />
+                    <stop offset="100%" stop-color="#16A34A" />
+                  </linearGradient>
+                </defs>
+                <ellipse cx="16" cy="28" rx="12" ry="3" fill="rgba(0,0,0,0.2)" />
+                <rect x="4" y="8" width="24" height="16" rx="2" ry="2" fill="url(#busGradient-moving)" stroke="#15803D" stroke-width="0.5" />
+                <rect x="4" y="8" width="4" height="16" rx="2" ry="2" fill="#16A34A" />
+                <rect x="6" y="10" width="3" height="4" rx="0.5" fill="#E0F2FE" opacity="0.9" />
+                <rect x="11" y="10" width="4" height="4" rx="0.5" fill="#E0F2FE" opacity="0.9" />
+                <rect x="17" y="10" width="4" height="4" rx="0.5" fill="#E0F2FE" opacity="0.9" />
+                <rect x="23" y="10" width="4" height="4" rx="0.5" fill="#E0F2FE" opacity="0.9" />
+                <rect x="11" y="16" width="4" height="6" rx="0.5" fill="#15803D" opacity="0.8" />
+                <circle cx="9" cy="25" r="2.5" fill="#2D3748" stroke="#1A202C" stroke-width="0.5" />
+                <circle cx="23" cy="25" r="2.5" fill="#2D3748" stroke="#1A202C" stroke-width="0.5" />
+                <circle cx="9" cy="25" r="1.5" fill="#4A5568" />
+                <circle cx="23" cy="25" r="1.5" fill="#4A5568" />
+                <circle cx="6" cy="12" r="1" fill="#FEF3C7" opacity="0.9" />
+                <circle cx="6" cy="20" r="1" fill="#FEF3C7" opacity="0.9" />
+                <rect x="5" y="9" width="22" height="1" fill="#4ADE80" opacity="0.6" rx="0.5" />
+                <line x1="4" y1="16" x2="28" y2="16" stroke="#15803D" stroke-width="0.5" opacity="0.7" />
+              </svg>
+            `)}`,
+            size: new window.google.maps.Size(32, 32),
+            scaledSize: new window.google.maps.Size(32, 32),
+            anchor: new window.google.maps.Point(16, 16),
+            origin: new window.google.maps.Point(0, 0)
         };
         const busMarker = new Marker({ position: routePath[0], map, icon: busIcon });
 

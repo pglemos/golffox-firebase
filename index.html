@@ -62,29 +62,7 @@
   }
 }
 </script>
-    <!-- Google Maps API Loader -->
-    <script>
-      // These flags will be checked by the React components to ensure the APIs are ready.
-      window.googleMapsApiLoaded = false;
-      window.gm_authFailure = () => {
-        // This global handler catches authentication failures immediately.
-        console.error("Google Maps API authentication failed. Check your API key and ensure it has the correct permissions.");
-        console.error("Required APIs: Maps JavaScript API, Places API, Geometry API");
-        console.error("Make sure your domain is authorized for this API key.");
-        window.googleMapsApiLoaded = 'error';
-      };
-
-      function initMap() {
-        // This function is called by the Google Maps API script once it's ready.
-        window.googleMapsApiLoaded = true;
-      }
-    </script>
-    <!-- 
-      IMPORTANTE: Substitua a API Key abaixo pela sua chave válida do Google Maps
-      Para obter uma chave: https://developers.google.com/maps/documentation/javascript/get-api-key
-      Certifique-se de ativar as APIs: Maps JavaScript API, Directions API, Geometry API
-    -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC_SuBA3nwPYmhUC7OtiTYYl4iU8K674h8&libraries=places,geometry&callback=initMap" async></script>
+    <!-- Google Maps será carregado dinamicamente pelo componente GoogleMapsLoader -->
 <link rel="stylesheet" href="/index.css">
 </head>
   <body>

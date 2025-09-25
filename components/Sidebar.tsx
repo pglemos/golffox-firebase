@@ -1,7 +1,7 @@
 import React from 'react';
 import type { View } from '../types';
 import { VIEWS, GOLFFOX_LOGO_BASE64 } from '../constants';
-import { DashboardIcon, MapIcon, RouteIcon, AlertIcon, ReportIcon, TruckIcon, UserCircleIcon, LifebuoyIcon, BuildingOfficeIcon, AdjustmentsHorizontalIcon } from './icons/Icons';
+import { DashboardIcon, MapIcon, RouteIcon, AlertIcon, ReportIcon, TruckIcon, UserCircleIcon, LifebuoyIcon, BuildingOfficeIcon, AdjustmentsHorizontalIcon, ClockIcon, CurrencyDollarIcon } from './icons/Icons';
 
 interface SidebarProps {
   currentView: View;
@@ -97,6 +97,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
             label={VIEWS.REPORTS}
             isActive={currentView === VIEWS.REPORTS}
             onClick={() => setCurrentView(VIEWS.REPORTS)}
+          />
+          <NavItem
+            icon={<ClockIcon className="h-6 w-6" />}
+            label={VIEWS.ROUTE_HISTORY}
+            isActive={currentView === VIEWS.ROUTE_HISTORY}
+            onClick={() => setCurrentView(VIEWS.ROUTE_HISTORY)}
+          />
+          <NavItem
+            icon={<CurrencyDollarIcon className="h-6 w-6" />}
+            label={VIEWS.COST_CONTROL}
+            isActive={currentView === VIEWS.COST_CONTROL}
+            onClick={() => setCurrentView(VIEWS.COST_CONTROL)}
           />
         </ul>
       </nav>

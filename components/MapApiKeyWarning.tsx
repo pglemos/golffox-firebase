@@ -8,8 +8,18 @@ interface MapApiKeyWarningProps {
 const MapApiKeyWarning: React.FC<MapApiKeyWarningProps> = ({ message }) => {
   const defaultMessage = (
     <>
-      A chave da API do Google Maps está ausente ou é inválida. 
-      <p className="mt-2">Por favor, configure uma chave de API válida no arquivo <code>index.html</code> para habilitar os mapas.</p>
+      A chave da API do Google Maps não está configurada.
+      <div className="mt-3 text-left space-y-2">
+        <p className="font-semibold">Para configurar:</p>
+        <ol className="list-decimal list-inside space-y-1 text-sm">
+          <li>Crie um arquivo <code className="bg-gray-100 px-1 rounded">.env</code> na raiz do projeto</li>
+          <li>Adicione: <code className="bg-gray-100 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY=sua_chave_aqui</code></li>
+          <li>Reinicie o servidor de desenvolvimento</li>
+        </ol>
+        <p className="text-xs mt-2">
+          <strong>APIs necessárias:</strong> Maps JavaScript API, Directions API, Geometry API, Places API
+        </p>
+      </div>
     </>
   );
 

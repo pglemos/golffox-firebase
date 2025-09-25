@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import type { Route, Passenger } from '../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import type { Route, Passenger, Company, Employee } from '../types';
 import { RouteStatus } from '../types';
-import { PlusCircleIcon, PencilIcon, TrashIcon, XMarkIcon, UserIcon } from './icons/Icons';
+import { PlusCircleIcon, PencilIcon, TrashIcon, XMarkIcon, UserIcon, MapPinIcon, ClockIcon, TruckIcon } from './icons/Icons';
+import { MOCK_COMPANIES, MOCK_EMPLOYEES } from '../constants';
+import { routeOptimizationService } from '../services/routeOptimizationService';
 
 const getStatusBadgeClass = (status: RouteStatus) => {
   switch (status) {
@@ -31,6 +33,132 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
   
   const [newPassengerName, setNewPassengerName] = useState('');
   const [newPassengerAddress, setNewPassengerAddress] = useState('');
+  const [newPassengerCpf, setNewPassengerCpf] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState('');
+  
+  // Automation features state
+  const [addressSuggestions, setAddressSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [employeeSuggestions, setEmployeeSuggestions] = useState<Employee[]>([]);
+  const [showEmployeeSuggestions, setShowEmployeeSuggestions] = useState(false);
+  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const [routeOptimizationSuggestion, setRouteOptimizationSuggestion] = useState<string>('');
+  
+  // Refs for autocomplete
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
+  const geocoder = useRef<google.maps.Geocoder | null>(null);
+
+  // Initialize Google Maps services
+  useEffect(() => {
+    if (window.google && window.google.maps) {
+      autocompleteService.current = new window.google.maps.places.AutocompleteService();
+      geocoder.current = new window.google.maps.Geocoder();
+    }
+  }, []);
+
+  // Filter employees by company and search term
+  const filteredEmployees = useMemo(() => {
+    if (!selectedCompany) return [];
+    
+    let employees = MOCK_EMPLOYEES.filter(emp => emp.companyId === selectedCompany);
+    
+    if (newPassengerName.trim()) {
+      const searchTerm = newPassengerName.toLowerCase();
+      employees = employees.filter(emp => 
+        emp.name.toLowerCase().includes(searchTerm) ||
+        emp.cpf.includes(searchTerm)
+      );
+    }
+    
+    return employees.slice(0, 5); // Limit to 5 suggestions
+  }, [selectedCompany, newPassengerName]);
+
+  // Handle address autocomplete
+  const handleAddressChange = (value: string) => {
+    setNewPassengerAddress(value);
+    
+    if (value.length > 2 && autocompleteService.current) {
+      autocompleteService.current.getPlacePredictions(
+        {
+          input: value,
+          componentRestrictions: { country: 'br' },
+          types: ['address']
+        },
+        (predictions, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setAddressSuggestions(predictions);
+            setShowAddressSuggestions(true);
+          } else {
+            setAddressSuggestions([]);
+            setShowAddressSuggestions(false);
+          }
+        }
+      );
+    } else {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    }
+  };
+
+  // Handle employee name autocomplete
+  const handleNameChange = (value: string) => {
+    setNewPassengerName(value);
+    setShowEmployeeSuggestions(value.length > 0 && filteredEmployees.length > 0);
+  };
+
+  // Select address from suggestions
+  const selectAddressSuggestion = (prediction: google.maps.places.AutocompletePrediction) => {
+    setNewPassengerAddress(prediction.description);
+    setShowAddressSuggestions(false);
+    
+    // Geocode the selected address
+    if (geocoder.current) {
+      setIsGeocodingAddress(true);
+      geocoder.current.geocode(
+        { address: prediction.description },
+        (results, status) => {
+          setIsGeocodingAddress(false);
+          if (status === 'OK' && results && results[0]) {
+            // Address geocoded successfully - coordinates will be used for route optimization
+            console.log('Geocoded coordinates:', results[0].geometry.location.toJSON());
+          }
+        }
+      );
+    }
+  };
+
+  // Select employee from suggestions
+  const selectEmployeeSuggestion = (employee: Employee) => {
+    setNewPassengerName(employee.name);
+    setNewPassengerCpf(employee.cpf);
+    setNewPassengerAddress(employee.address);
+    setShowEmployeeSuggestions(false);
+    setShowAddressSuggestions(false);
+  };
+
+  // Gera sugestão de otimização baseada no número de passageiros
+  const generateRouteOptimizationSuggestion = useCallback((passengerCount: number) => {
+    return routeOptimizationService.generateOptimizationSuggestion(passengerCount);
+  }, []);
+
+  // Generate route optimization suggestion
+  const generateRouteOptimization = () => {
+    if (!currentRoute) {
+      setRouteOptimizationSuggestion('');
+      return;
+    }
+
+    const passengerCount = currentRoute.passengers.list.length;
+    const suggestion = generateRouteOptimizationSuggestion(passengerCount);
+    setRouteOptimizationSuggestion(suggestion);
+  };
+
+  // Update route optimization when passengers change
+  useEffect(() => {
+    generateRouteOptimization();
+  }, [currentRoute?.passengers.list]);
 
   const openCreateModal = () => {
     setModalMode('create');
@@ -56,6 +184,14 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
     setRouteToDelete(null);
     setNewPassengerName('');
     setNewPassengerAddress('');
+    setNewPassengerCpf('');
+    setSelectedCompany('');
+    setAddressSuggestions([]);
+    setShowAddressSuggestions(false);
+    setEmployeeSuggestions([]);
+    setShowEmployeeSuggestions(false);
+    setIsGeocodingAddress(false);
+    setRouteOptimizationSuggestion('');
   };
 
   const handleSave = () => {
@@ -89,18 +225,44 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
 
   const handleAddPassenger = () => {
       if (!newPassengerName.trim() || !newPassengerAddress.trim() || !currentRoute) return;
+      
+      // Valida endereço se tiver coordenadas
+      const hasValidCoordinates = routeOptimizationService.validateAddress(
+        newPassengerAddress.trim(), 
+        { lat: 0, lng: 0 }
+      );
+
       const newPassenger: Passenger = {
           id: `p${Date.now()}`,
-          name: newPassengerName,
-          address: newPassengerAddress,
-          pickupTime: 'N/A',
+          name: newPassengerName.trim(),
+          address: newPassengerAddress.trim(),
+          pickupTime: hasValidCoordinates ? 'Calculando...' : 'A calcular',
           photoUrl: `https://picsum.photos/seed/${Date.now()}/100`,
-          cpf: '000.000.000-00',
-          position: { lat: 0, lng: 0 }
+          cpf: newPassengerCpf || '000.000.000-00',
+          position: { lat: 0, lng: 0 } // Will be updated by geocoding
       };
-      setCurrentRoute(prev => prev ? ({ ...prev, passengers: { ...prev.passengers, list: [...prev.passengers.list, newPassenger] } }) : null);
+      
+      const updatedRoute = {
+        ...currentRoute,
+        passengers: {
+          ...currentRoute.passengers,
+          list: [...currentRoute.passengers.list, newPassenger]
+        }
+      };
+      
+      setCurrentRoute(updatedRoute);
+      
+      // Reset form
       setNewPassengerName('');
       setNewPassengerAddress('');
+      setNewPassengerCpf('');
+      setSelectedCompany('');
+      setShowAddressSuggestions(false);
+      setShowEmployeeSuggestions(false);
+      
+      // Atualiza sugestão de otimização
+      const suggestion = generateRouteOptimizationSuggestion(updatedRoute.passengers.list.length);
+      setRouteOptimizationSuggestion(suggestion);
   };
 
   const handleRemovePassenger = (passengerId: string) => {
@@ -239,33 +401,165 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
               <hr className="my-6"/>
 
               <div>
-                <h4 className="text-lg font-bold text-golffox-gray-dark mb-4">Passageiros da Rota</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-bold text-golffox-gray-dark">Passageiros da Rota</h4>
+                  {routeOptimizationSuggestion && (
+                    <div className="flex items-center text-sm text-golffox-blue-light bg-blue-50 px-3 py-1 rounded-lg">
+                      <TruckIcon className="h-4 w-4 mr-2" />
+                      {routeOptimizationSuggestion}
+                    </div>
+                  )}
+                </div>
+                
                 <div className="bg-golffox-gray-light p-4 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                    <input type="text" placeholder="Nome do Passageiro" value={newPassengerName} onChange={e => setNewPassengerName(e.target.value)} className="md:col-span-1 w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-golffox-orange-primary"/>
-                    <input type="text" placeholder="Endereço Completo" value={newPassengerAddress} onChange={e => setNewPassengerAddress(e.target.value)} className="md:col-span-2 w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-golffox-orange-primary"/>
+                  {/* Company Selection for Employee Suggestions */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-golffox-gray-dark mb-2">
+                      Empresa (para sugestões automáticas)
+                    </label>
+                    <select
+                      value={selectedCompany}
+                      onChange={(e) => setSelectedCompany(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-golffox-orange-primary"
+                    >
+                      <option value="">Selecione uma empresa...</option>
+                      {MOCK_COMPANIES.map(company => (
+                        <option key={company.id} value={company.id}>{company.name}</option>
+                      ))}
+                    </select>
                   </div>
-                  <button onClick={handleAddPassenger} className="w-full md:w-auto px-4 py-2 bg-golffox-blue-light text-white text-sm font-semibold rounded-lg hover:bg-golffox-blue-dark">Adicionar Passageiro</button>
+
+                  {/* Passenger Input Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                    {/* Name Input with Employee Suggestions */}
+                    <div className="relative">
+                      <input
+                        ref={nameInputRef}
+                        type="text"
+                        placeholder="Nome do Passageiro"
+                        value={newPassengerName}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-golffox-orange-primary"
+                      />
+                      {showEmployeeSuggestions && filteredEmployees.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                          {filteredEmployees.map(employee => (
+                            <button
+                              key={employee.id}
+                              onClick={() => selectEmployeeSuggestion(employee)}
+                              className="w-full text-left px-3 py-2 hover:bg-golffox-gray-light text-sm"
+                            >
+                              <div className="font-medium">{employee.name}</div>
+                              <div className="text-xs text-gray-500">{employee.cpf}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CPF Input */}
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="CPF"
+                        value={newPassengerCpf}
+                        onChange={(e) => setNewPassengerCpf(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-golffox-orange-primary"
+                      />
+                    </div>
+
+                    {/* Address Input with Autocomplete */}
+                    <div className="md:col-span-2 relative">
+                      <div className="relative">
+                        <input
+                          ref={addressInputRef}
+                          type="text"
+                          placeholder="Endereço Completo"
+                          value={newPassengerAddress}
+                          onChange={(e) => handleAddressChange(e.target.value)}
+                          className="w-full px-3 py-2 pr-8 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-golffox-orange-primary"
+                        />
+                        {isGeocodingAddress && (
+                          <div className="absolute right-2 top-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-golffox-orange-primary"></div>
+                          </div>
+                        )}
+                        <MapPinIcon className="absolute right-2 top-2 h-4 w-4 text-gray-400" />
+                      </div>
+                      {showAddressSuggestions && addressSuggestions.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                          {addressSuggestions.map((prediction, index) => (
+                            <button
+                              key={prediction.place_id}
+                              onClick={() => selectAddressSuggestion(prediction)}
+                              className="w-full text-left px-3 py-2 hover:bg-golffox-gray-light text-sm"
+                            >
+                              <div className="flex items-center">
+                                <MapPinIcon className="h-4 w-4 mr-2 text-gray-400" />
+                                {prediction.description}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={handleAddPassenger} 
+                    disabled={!newPassengerName.trim() || !newPassengerAddress.trim()}
+                    className="w-full md:w-auto px-4 py-2 bg-golffox-blue-light text-white text-sm font-semibold rounded-lg hover:bg-golffox-blue-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <PlusCircleIcon className="h-4 w-4 mr-2 inline" />
+                    Adicionar Passageiro
+                  </button>
                 </div>
 
                 <div className="mt-4 space-y-2">
                   {currentRoute.passengers.list.length === 0 ? (
                     <p className="text-center text-golffox-gray-medium text-sm py-4">Nenhum passageiro adicionado a esta rota.</p>
                   ) : (
-                    currentRoute.passengers.list.map(p => (
-                      <div key={p.id} className="bg-white border border-golffox-gray-light p-3 rounded-lg flex justify-between items-center">
-                        <div className="flex items-center">
-                          <UserIcon className="h-5 w-5 mr-3 text-golffox-gray-medium"/>
-                          <div>
-                            <p className="font-semibold text-golffox-gray-dark">{p.name}</p>
-                            <p className="text-xs text-golffox-gray-medium">{p.address}</p>
+                    <div className="space-y-2">
+                      {currentRoute.passengers.list.map((p, index) => (
+                        <div key={p.id} className="bg-white border border-golffox-gray-light p-4 rounded-lg">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-start flex-1">
+                              <div className="flex items-center justify-center w-8 h-8 bg-golffox-blue-light text-white rounded-full text-sm font-bold mr-3 mt-1">
+                                {index + 1}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center mb-2">
+                                  <UserIcon className="h-4 w-4 mr-2 text-golffox-gray-medium"/>
+                                  <p className="font-semibold text-golffox-gray-dark">{p.name}</p>
+                                  {p.cpf !== '000.000.000-00' && (
+                                    <span className="ml-2 text-xs text-golffox-gray-medium bg-gray-100 px-2 py-1 rounded">
+                                      {p.cpf}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center mb-2">
+                                  <MapPinIcon className="h-4 w-4 mr-2 text-golffox-gray-medium"/>
+                                  <p className="text-sm text-golffox-gray-medium">{p.address}</p>
+                                </div>
+                                <div className="flex items-center">
+                                  <ClockIcon className="h-4 w-4 mr-2 text-golffox-gray-medium"/>
+                                  <p className="text-sm text-golffox-gray-medium">
+                                    Horário de coleta: <span className="font-medium">{p.pickupTime}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => handleRemovePassenger(p.id)} 
+                              className="text-golffox-red hover:text-red-700 p-1 ml-2" 
+                              title="Remover Passageiro"
+                            >
+                              <TrashIcon className="h-5 w-5"/>
+                            </button>
                           </div>
                         </div>
-                        <button onClick={() => handleRemovePassenger(p.id)} className="text-golffox-red hover:text-red-700 p-1" title="Remover Passageiro">
-                          <TrashIcon className="h-5 w-5"/>
-                        </button>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

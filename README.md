@@ -109,20 +109,57 @@ golffox/
 
 ## 🔧 Configuração das APIs
 
-### Google Maps API
+### 1. Crie o arquivo .env
+
+Copie o arquivo `.env.example` para `.env`:
+```bash
+cp .env.example .env
+```
+
+### 2. Configure a API do Google Maps
+
 1. Acesse o [Google Cloud Console](https://console.cloud.google.com/)
 2. Crie um novo projeto ou selecione um existente
 3. Ative as seguintes APIs:
-   - Maps JavaScript API
-   - Geocoding API
-   - Directions API
-   - Places API
-4. Crie uma chave de API e adicione ao arquivo `.env.local`
+   - **Maps JavaScript API**
+   - **Directions API**
+   - **Geometry API**
+   - **Places API**
+4. Crie uma chave de API:
+   - Vá para "Credenciais" > "Criar credenciais" > "Chave de API"
+   - Configure as restrições de domínio se necessário
+5. Adicione a chave no arquivo `.env`:
+   ```
+   VITE_GOOGLE_MAPS_API_KEY=sua_chave_do_google_maps_aqui
+   ```
 
-### Google Gemini API (Opcional)
-1. Acesse o [Google AI Studio](https://makersuite.google.com/)
-2. Gere uma chave de API
-3. Adicione ao arquivo `.env.local`
+### 3. Configure a API do Gemini (Opcional)
+
+1. Acesse o [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Crie uma nova chave de API
+3. Adicione no arquivo `.env`:
+   ```
+   VITE_GEMINI_API_KEY=sua_chave_do_gemini_aqui
+   ```
+
+### 4. Reinicie o servidor
+
+Após configurar as variáveis de ambiente, reinicie o servidor de desenvolvimento:
+```bash
+npm run dev
+```
+
+## 🔧 Solução de Problemas
+
+### Mapa não carrega
+- Verifique se a chave da API do Google Maps está configurada corretamente
+- Confirme se todas as APIs necessárias estão ativadas no Google Cloud Console
+- Verifique se não há restrições de domínio impedindo o uso da chave
+
+### Erro de autenticação
+- Verifique se a chave de API é válida
+- Confirme se o projeto no Google Cloud tem as APIs ativadas
+- Verifique se há cotas ou limites de uso atingidos
 
 ## 🎯 Funcionalidades Implementadas
 

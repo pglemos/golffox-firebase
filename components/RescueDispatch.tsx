@@ -5,10 +5,10 @@ import { LifebuoyIcon, PaperAirplaneIcon } from './icons/Icons';
 
 const RescueDispatch: React.FC = () => {
   const routesWithProblems = MOCK_ROUTES.filter(r => r.status === RouteStatus.Problem);
-  const availableDrivers = MOCK_DRIVERS.filter(d => d.status === 'Disponível');
+  const availableDrivers = MOCK_DRIVERS.filter(d => d.status === 'Ativo');
   // Simple check for available vehicles (not currently on a problem route)
   const problemRouteVehiclePlates = routesWithProblems.map(r => r.vehicle);
-  const availableVehicles = MOCK_VEHICLES.filter(v => !problemRouteVehiclePlates.includes(v.plate));
+  const availableVehicles = MOCK_VEHICLES.filter(v => v.isRegistered === true && !problemRouteVehiclePlates.includes(v.plate));
 
   const [selectedRoute, setSelectedRoute] = useState<string>(routesWithProblems[0]?.id || '');
 

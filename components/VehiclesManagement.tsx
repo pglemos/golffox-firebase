@@ -48,7 +48,7 @@ const VehiclesManagement: React.FC = () => {
             </tr>
           </thead>
           <tbody className="text-golffox-gray-medium">
-            {MOCK_VEHICLES.map((vehicle: Vehicle, index: number) => (
+            {MOCK_VEHICLES.filter(vehicle => vehicle.isRegistered === true).map((vehicle: Vehicle, index: number) => (
               <tr key={vehicle.id} className={index % 2 === 0 ? 'bg-white' : 'bg-golffox-gray-light'}>
                 <td className="py-4 px-6 font-bold text-golffox-gray-dark">{vehicle.plate}</td>
                 <td className="py-4 px-6">{vehicle.model}</td>
@@ -78,7 +78,7 @@ const VehiclesManagement: React.FC = () => {
 
       {/* Mobile Card View */}
       <div className="lg:hidden space-y-4">
-        {MOCK_VEHICLES.map((vehicle: Vehicle) => (
+        {MOCK_VEHICLES.filter(vehicle => vehicle.isRegistered === true).map((vehicle: Vehicle) => (
           <div key={vehicle.id} className="bg-white rounded-lg shadow-md p-4 border border-golffox-gray-light">
             <div className="flex justify-between items-start mb-3">
               <div>
