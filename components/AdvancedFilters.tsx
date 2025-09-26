@@ -357,7 +357,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
           <div className="flex flex-wrap gap-2">
             {filters.searchTerm && (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                Busca: "{filters.searchTerm}"
+                Busca: &quot;{filters.searchTerm}&quot;
               </span>
             )}
             {(filters.dateRange.start || filters.dateRange.end) && (

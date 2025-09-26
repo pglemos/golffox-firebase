@@ -8,11 +8,11 @@ interface ChecklistProps {
 }
 
 const categoryIcons: { [key: string]: React.ReactNode } = {
-    'Mecânicos': <WrenchScrewdriverIcon className="h-6 w-6" />,
-    'Estrutura': <TruckIcon className="h-6 w-6" />,
-    'Segurança': <ShieldCheckIcon className="h-6 w-6" />,
-    'Conforto': <UserIcon className="h-6 w-6" />,
-    'Documentação': <DocumentTextIcon className="h-6 w-6" />,
+    'Mecânicos': <WrenchScrewdriverIcon className="h-6 w-6" variant="rotate" />,
+    'Estrutura': <TruckIcon className="h-6 w-6" variant="scale" />,
+    'Segurança': <ShieldCheckIcon className="h-6 w-6" variant="glow" />,
+    'Conforto': <UserIcon className="h-6 w-6" variant="hover" />,
+    'Documentação': <DocumentTextIcon className="h-6 w-6" variant="float" />,
 };
 
 
@@ -71,7 +71,7 @@ const Checklist: React.FC<ChecklistProps> = ({ onComplete }) => {
                                                 }`}
                                                 aria-label={`Marcar ${item.label} como problema`}
                                             >
-                                                <ExclamationCircleIcon className="h-5 w-5 sm:h-6 sm:w-6"/>
+                                                <ExclamationCircleIcon className="h-5 w-5 sm:h-6 sm:w-6" variant="pulse"/>
                                             </button>
                                             <button 
                                                 onClick={() => handleCheck(item.id, 'ok')} 
@@ -80,7 +80,7 @@ const Checklist: React.FC<ChecklistProps> = ({ onComplete }) => {
                                                 }`}
                                                 aria-label={`Marcar ${item.label} como ok`}
                                             >
-                                                <CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6"/>
+                                                <CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6" variant="bounce"/>
                                             </button>
                                         </div>
                                     </div>

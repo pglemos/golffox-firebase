@@ -1,22 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  TruckIcon, 
-  UserGroupIcon, 
-  ChartBarIcon,
-  ExclamationTriangleIcon 
-} from '@heroicons/react/24/outline';
-import { 
-  Bell, 
   Settings, 
   Activity,
   Navigation,
-  Users,
-  BarChart3,
-  Truck,
-  AlertTriangle,
-  ChevronRight,
-  MapPin
+  ChevronRight
 } from 'lucide-react';
+import { 
+  BellIcon,
+  DashboardIcon,
+  MapIcon,
+  AlertIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  TruckIcon,
+  MapPinIcon
+} from './icons/Icons';
 import { useNotifications } from '../hooks/useNotifications';
 import { useToastNotifications } from '../hooks/useToastNotifications';
 import { NotificationContainer } from './NotificationToast';
@@ -199,7 +197,7 @@ const Dashboard: React.FC = () => {
                       <span className="text-xs text-white font-bold">{criticalAlerts}</span>
                     </div>
                   )}
-                  <Bell className={`w-6 h-6 ${hasCriticalAlerts ? 'text-red-500' : 'text-gray-400'}`} />
+                  <BellIcon className={`w-6 h-6 ${hasCriticalAlerts ? 'text-red-500' : 'text-gray-400'}`} variant="bounce" />
                 </div>
                 
                 {/* Toggle de tema */}
@@ -212,7 +210,7 @@ const Dashboard: React.FC = () => {
               <InfoCard
                 title="Colaboradores em Trânsito"
                 value={totalPassengers.toString()}
-                icon={<Users className="w-6 h-6 text-blue-600" />}
+                icon={<UserGroupIcon className="w-6 h-6 text-blue-600" variant="float" />}
                 trend="+12% vs ontem"
                 trendDirection="up"
               />
@@ -220,7 +218,7 @@ const Dashboard: React.FC = () => {
               <InfoCard
                 title="Veículos Ativos"
                 value={`${activeVehicles}/${registeredVehicles.length}`}
-                icon={<Truck className="w-6 h-6 text-green-600" />}
+                icon={<TruckIcon className="w-6 h-6 text-green-600" variant="premium" />}
                 trend="Operação normal"
                 trendDirection="neutral"
               />
@@ -228,7 +226,7 @@ const Dashboard: React.FC = () => {
               <InfoCard
                 title="Rotas do Dia"
                 value={MOCK_ROUTES.length.toString()}
-                icon={<MapPin className="w-6 h-6 text-purple-600" />}
+                icon={<MapPinIcon className="w-6 h-6 text-purple-600" variant="float" />}
                 trend="+3 vs planejado"
                 trendDirection="up"
               />
@@ -236,7 +234,7 @@ const Dashboard: React.FC = () => {
               <InfoCard
                 title="Alertas Críticos"
                 value={criticalAlerts.toString()}
-                icon={<AlertTriangle className="w-6 h-6 text-red-600" />}
+                icon={<AlertIcon className="w-6 h-6 text-red-600" variant="pulse" />}
                 trend={criticalAlerts > 0 ? "Requer atenção" : "Tudo normal"}
                 trendDirection={criticalAlerts > 0 ? "down" : "neutral"}
                 className={criticalAlerts > 0 ? "border-red-200 bg-red-50" : ""}
@@ -248,7 +246,7 @@ const Dashboard: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Ações Rápidas</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <QuickAction
-                  icon={<Truck className="w-6 h-6 text-white" />}
+                  icon={<TruckIcon className="w-6 h-6 text-white" variant="hover" />}
                   title="Rastrear Veículos"
                   description="Monitore a localização e status dos veículos em tempo real"
                   onClick={() => setActiveView('vehicles')}
@@ -256,7 +254,7 @@ const Dashboard: React.FC = () => {
                 />
                 
                 <QuickAction
-                  icon={<BarChart3 className="w-6 h-6 text-white" />}
+                  icon={<ChartBarIcon className="w-6 h-6 text-white" variant="scale" />}
                   title="Ver Análises"
                   description="Acesse relatórios e métricas de performance"
                   onClick={() => setActiveView('analytics')}
@@ -278,7 +276,7 @@ const Dashboard: React.FC = () => {
               <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
                 <div className="flex items-start space-x-4">
                   <div className="p-2 bg-red-100 rounded-lg">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                    <AlertIcon className="w-6 h-6 text-red-600" variant="pulse" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-red-900">Alertas Críticos Detectados</h3>

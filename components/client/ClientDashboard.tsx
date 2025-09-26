@@ -61,17 +61,17 @@ const ClientDashboard: React.FC = () => {
                     <InfoCard 
                         title="Colaboradores Transportados Hoje"
                         value={totalPassengers.toString()}
-                        icon={<UserGroupIcon className="h-8 w-8 text-golffox-orange-primary"/>}
+                        icon={<UserGroupIcon className="h-8 w-8 text-golffox-orange-primary" variant="float"/>}
                     />
                     <InfoCard 
                         title="Rotas Contratadas Ativas"
                         value={clientRoutes.length.toString()}
-                        icon={<ChartBarIcon className="h-8 w-8 text-golffox-orange-primary"/>}
+                        icon={<ChartBarIcon className="h-8 w-8 text-golffox-orange-primary" variant="scale"/>}
                     />
                      <InfoCard 
                         title="Pontualidade Média"
                         value={`${averagePunctuality.toFixed(1)} min`}
-                        icon={<ClockIcon className="h-8 w-8 text-golffox-orange-primary"/>}
+                        icon={<ClockIcon className="h-8 w-8 text-golffox-orange-primary" variant="rotate"/>}
                     />
                 </div>
 

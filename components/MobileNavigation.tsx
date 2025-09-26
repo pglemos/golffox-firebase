@@ -85,16 +85,16 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ currentView, setCur
             
             <nav className="space-y-2">
               {[
-                { icon: <DashboardIcon className="h-6 w-6" />, view: VIEWS.DASHBOARD },
-                { icon: <MapIcon className="h-6 w-6" />, view: VIEWS.MAP },
-                { icon: <RouteIcon className="h-6 w-6" />, view: VIEWS.ROUTES },
-                { icon: <TruckIcon className="h-6 w-6" />, view: VIEWS.VEHICLES },
-                { icon: <UserCircleIcon className="h-6 w-6" />, view: VIEWS.DRIVERS },
-                { icon: <BuildingOfficeIcon className="h-6 w-6" />, view: VIEWS.COMPANIES },
-                { icon: <AdjustmentsHorizontalIcon className="h-6 w-6" />, view: VIEWS.PERMISSIONS },
-                { icon: <LifebuoyIcon className="h-6 w-6" />, view: VIEWS.RESCUE },
-                { icon: <AlertIcon className="h-6 w-6" />, view: VIEWS.ALERTS },
-                { icon: <ReportIcon className="h-6 w-6" />, view: VIEWS.REPORTS },
+                { icon: <DashboardIcon className="h-6 w-6" variant="premium" />, view: VIEWS.DASHBOARD },
+                { icon: <MapIcon className="h-6 w-6" variant="float" />, view: VIEWS.MAP },
+                { icon: <RouteIcon className="h-6 w-6" variant="hover" />, view: VIEWS.ROUTES },
+                { icon: <TruckIcon className="h-6 w-6" variant="scale" />, view: VIEWS.VEHICLES },
+                { icon: <UserCircleIcon className="h-6 w-6" variant="hover" />, view: VIEWS.DRIVERS },
+                { icon: <BuildingOfficeIcon className="h-6 w-6" variant="scale" />, view: VIEWS.COMPANIES },
+                { icon: <AdjustmentsHorizontalIcon className="h-6 w-6" variant="rotate" />, view: VIEWS.PERMISSIONS },
+                { icon: <LifebuoyIcon className="h-6 w-6" variant="bounce" />, view: VIEWS.RESCUE },
+                { icon: <AlertIcon className="h-6 w-6" variant="pulse" />, view: VIEWS.ALERTS },
+                { icon: <ReportIcon className="h-6 w-6" variant="scale" />, view: VIEWS.REPORTS },
               ].map(({ icon, view }) => (
                 <button
                   key={view}
@@ -123,31 +123,31 @@ const MobileNavigation: React.FC<MobileNavigationProps> = ({ currentView, setCur
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-golffox-gray-light shadow-lg z-40 safe-bottom">
         <div className="grid grid-cols-5 gap-1 p-2">
           <MobileNavItem
-            icon={<DashboardIcon className="h-5 w-5" />}
+            icon={<DashboardIcon className="h-5 w-5" variant="premium" />}
             label="Dashboard"
             isActive={currentView === VIEWS.DASHBOARD}
             onClick={() => setCurrentView(VIEWS.DASHBOARD)}
           />
           <MobileNavItem
-            icon={<MapIcon className="h-5 w-5" />}
+            icon={<MapIcon className="h-5 w-5" variant="float" />}
             label="Mapa"
             isActive={currentView === VIEWS.MAP}
             onClick={() => setCurrentView(VIEWS.MAP)}
           />
           <MobileNavItem
-            icon={<RouteIcon className="h-5 w-5" />}
+            icon={<RouteIcon className="h-5 w-5" variant="hover" />}
             label="Rotas"
             isActive={currentView === VIEWS.ROUTES}
             onClick={() => setCurrentView(VIEWS.ROUTES)}
           />
           <MobileNavItem
-            icon={<TruckIcon className="h-5 w-5" />}
+            icon={<TruckIcon className="h-5 w-5" variant="scale" />}
             label="Veículos"
             isActive={currentView === VIEWS.VEHICLES}
             onClick={() => setCurrentView(VIEWS.VEHICLES)}
           />
           <MobileNavItem
-            icon={<AlertIcon className="h-5 w-5" />}
+            icon={<AlertIcon className="h-5 w-5" variant="pulse" />}
             label="Alertas"
             isActive={currentView === VIEWS.ALERTS}
             onClick={() => setCurrentView(VIEWS.ALERTS)}

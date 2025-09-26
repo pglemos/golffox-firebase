@@ -201,7 +201,7 @@ const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
             <div className="bg-golffox-blue-light p-3 sm:p-4 md:p-6 shadow-lg z-10 animate-fade-in-down">
                 <div className="flex items-center">
                     <div className="mr-2 sm:mr-3 md:mr-4">
-                        <IconComponent className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" />
+                        <IconComponent className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" variant="premium" />
                     </div>
                     <div className="min-w-0 flex-1">
                         <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">{currentDirection.instruction}</h1>

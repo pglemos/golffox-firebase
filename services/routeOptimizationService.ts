@@ -17,7 +17,7 @@ export interface RouteOptimizationOptions {
 }
 
 export interface RouteCalculationError extends Error {
-    code: 'GOOGLE_MAPS_NOT_LOADED' | 'INVALID_COORDINATES' | 'NO_PASSENGERS' | 'DIRECTIONS_API_ERROR' | 'UNKNOWN_ERROR';
+    code: 'GOOGLE_MAPS_NOT_LOADED' | 'INVALID_COORDINATES' | 'NO_PASSENGERS' | 'DIRECTIONS_API_ERROR' | 'UNKNOWN_ERROR' | 'SSR_ENVIRONMENT';
     details?: string;
 }
 
@@ -54,6 +54,11 @@ export class RouteOptimizationService {
     }
 
     private async initializeService(): Promise<void> {
+        // Verificar se estamos no ambiente do browser
+        if (typeof window === 'undefined') {
+            return; // Não inicializar no servidor
+        }
+
         // Aguarda o carregamento da API do Google Maps
         await this.waitForGoogleMapsAPI();
         
@@ -65,6 +70,14 @@ export class RouteOptimizationService {
     private waitForGoogleMapsAPI(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             try {
+                // Verificar se estamos no ambiente do browser
+                if (typeof window === 'undefined') {
+                    const error: RouteCalculationError = new Error('Google Maps API não disponível no ambiente servidor') as RouteCalculationError;
+                    error.code = 'SSR_ENVIRONMENT';
+                    reject(error);
+                    return;
+                }
+
                 // Se já estiver carregada
                 if (window.googleMapsApiLoaded === true && window.google?.maps?.DirectionsService) {
                     resolve();

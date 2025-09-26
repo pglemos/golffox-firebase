@@ -43,13 +43,13 @@ const ClientSidebar: React.FC<ClientSidebarProps> = ({ currentView, setCurrentVi
       <nav>
         <ul>
           <NavItem
-            icon={<DashboardIcon className="h-6 w-6" />}
+            icon={<DashboardIcon className="h-6 w-6" variant="premium" />}
             label="Dashboard"
             isActive={currentView === 'Dashboard'}
             onClick={() => setCurrentView('Dashboard')}
           />
           <NavItem
-            icon={<UserGroupIcon className="h-6 w-6" />}
+            icon={<UserGroupIcon className="h-6 w-6" variant="float" />}
             label="Funcionários"
             isActive={currentView === 'Funcionários'}
             onClick={() => setCurrentView('Funcionários')}

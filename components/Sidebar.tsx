@@ -38,74 +38,74 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
       <nav>
         <ul>
           <NavItem
-            icon={<DashboardIcon className="h-6 w-6" />}
+            icon={<DashboardIcon className="h-6 w-6" variant="premium" />}
             label={VIEWS.DASHBOARD}
             isActive={currentView === VIEWS.DASHBOARD}
             onClick={() => setCurrentView(VIEWS.DASHBOARD)}
           />
           <NavItem
-            icon={<MapIcon className="h-6 w-6" />}
+            icon={<MapIcon className="h-6 w-6" variant="float" />}
             label={VIEWS.MAP}
             isActive={currentView === VIEWS.MAP}
             onClick={() => setCurrentView(VIEWS.MAP)}
           />
           <NavItem
-            icon={<RouteIcon className="h-6 w-6" />}
+            icon={<RouteIcon className="h-6 w-6" variant="hover" />}
             label={VIEWS.ROUTES}
             isActive={currentView === VIEWS.ROUTES}
             onClick={() => setCurrentView(VIEWS.ROUTES)}
           />
           <NavItem
-            icon={<TruckIcon className="h-6 w-6" />}
+            icon={<TruckIcon className="h-6 w-6" variant="scale" />}
             label={VIEWS.VEHICLES}
             isActive={currentView === VIEWS.VEHICLES}
             onClick={() => setCurrentView(VIEWS.VEHICLES)}
           />
            <NavItem
-            icon={<UserCircleIcon className="h-6 w-6" />}
+            icon={<UserCircleIcon className="h-6 w-6" variant="hover" />}
             label={VIEWS.DRIVERS}
             isActive={currentView === VIEWS.DRIVERS}
             onClick={() => setCurrentView(VIEWS.DRIVERS)}
           />
           <NavItem
-            icon={<BuildingOfficeIcon className="h-6 w-6" />}
+            icon={<BuildingOfficeIcon className="h-6 w-6" variant="scale" />}
             label={VIEWS.COMPANIES}
             isActive={currentView === VIEWS.COMPANIES}
             onClick={() => setCurrentView(VIEWS.COMPANIES)}
           />
           {/* FIX: Changed Users to Permissions. */}
           <NavItem
-            icon={<AdjustmentsHorizontalIcon className="h-6 w-6" />}
+            icon={<AdjustmentsHorizontalIcon className="h-6 w-6" variant="rotate" />}
             label={VIEWS.PERMISSIONS}
             isActive={currentView === VIEWS.PERMISSIONS}
             onClick={() => setCurrentView(VIEWS.PERMISSIONS)}
           />
            <NavItem
-            icon={<LifebuoyIcon className="h-6 w-6" />}
+            icon={<LifebuoyIcon className="h-6 w-6" variant="bounce" />}
             label={VIEWS.RESCUE}
             isActive={currentView === VIEWS.RESCUE}
             onClick={() => setCurrentView(VIEWS.RESCUE)}
           />
           <NavItem
-            icon={<AlertIcon className="h-6 w-6" />}
+            icon={<AlertIcon className="h-6 w-6" variant="pulse" />}
             label={VIEWS.ALERTS}
             isActive={currentView === VIEWS.ALERTS}
             onClick={() => setCurrentView(VIEWS.ALERTS)}
           />
           <NavItem
-            icon={<ReportIcon className="h-6 w-6" />}
+            icon={<ReportIcon className="h-6 w-6" variant="scale" />}
             label={VIEWS.REPORTS}
             isActive={currentView === VIEWS.REPORTS}
             onClick={() => setCurrentView(VIEWS.REPORTS)}
           />
           <NavItem
-            icon={<ClockIcon className="h-6 w-6" />}
+            icon={<ClockIcon className="h-6 w-6" variant="rotate" />}
             label={VIEWS.ROUTE_HISTORY}
             isActive={currentView === VIEWS.ROUTE_HISTORY}
             onClick={() => setCurrentView(VIEWS.ROUTE_HISTORY)}
           />
           <NavItem
-            icon={<CurrencyDollarIcon className="h-6 w-6" />}
+            icon={<CurrencyDollarIcon className="h-6 w-6" variant="glow" />}
             label={VIEWS.COST_CONTROL}
             isActive={currentView === VIEWS.COST_CONTROL}
             onClick={() => setCurrentView(VIEWS.COST_CONTROL)}

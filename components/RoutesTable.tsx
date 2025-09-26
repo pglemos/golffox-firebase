@@ -277,7 +277,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
         <button
           onClick={openCreateModal}
           className="w-full sm:w-auto bg-golffox-orange-primary text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors">
-          <PlusCircleIcon className="h-5 w-5 mr-2" />
+          <PlusCircleIcon className="h-5 w-5 mr-2" variant="bounce" />
           <span className="hidden sm:inline">Criar Nova Rota</span>
           <span className="sm:hidden">Nova Rota</span>
         </button>
@@ -317,12 +317,12 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
               <button
                 onClick={() => openEditModal(route)}
                 className="bg-golffox-blue-light text-white p-2 rounded-lg hover:bg-blue-600 transition-colors">
-                <PencilIcon className="h-4 w-4" />
+                <PencilIcon className="h-4 w-4" variant="hover" />
               </button>
               <button
                 onClick={() => openConfirmModal(route.id)}
                 className="bg-golffox-red text-white p-2 rounded-lg hover:bg-red-600 transition-colors">
-                <TrashIcon className="h-4 w-4" />
+                <TrashIcon className="h-4 w-4" variant="pulse" />
               </button>
             </div>
           </div>
@@ -361,10 +361,10 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
                 <td className="py-4 px-6 text-center">
                   <div className="flex justify-center items-center space-x-2">
                     <button onClick={() => openEditModal(route)} className="text-golffox-blue-light hover:text-golffox-blue-dark p-1" title="Editar Rota">
-                      <PencilIcon className="h-5 w-5" />
+                      <PencilIcon className="h-5 w-5" variant="hover" />
                     </button>
                     <button onClick={() => openConfirmModal(route.id)} className="text-golffox-red hover:text-red-700 p-1" title="Excluir Rota">
-                      <TrashIcon className="h-5 w-5" />
+                      <TrashIcon className="h-5 w-5" variant="pulse" />
                     </button>
                   </div>
                 </td>
@@ -381,7 +381,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <h3 className="text-xl font-bold text-golffox-gray-dark">{modalMode === 'create' ? 'Criar Nova Rota' : 'Editar Rota'}</h3>
               <button onClick={handleClose} className="p-1 rounded-full hover:bg-golffox-gray-light">
-                <XMarkIcon className="h-6 w-6 text-golffox-gray-medium" />
+                <XMarkIcon className="h-6 w-6 text-golffox-gray-medium" variant="rotate" />
               </button>
             </div>
             
@@ -484,7 +484,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-golffox-orange-primary"></div>
                           </div>
                         )}
-                        <MapPinIcon className="absolute right-2 top-2 h-4 w-4 text-gray-400" />
+                        <MapPinIcon className="absolute right-2 top-2 h-4 w-4 text-gray-400" variant="float" />
                       </div>
                       {showAddressSuggestions && addressSuggestions.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
@@ -495,7 +495,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
                               className="w-full text-left px-3 py-2 hover:bg-golffox-gray-light text-sm"
                             >
                               <div className="flex items-center">
-                                <MapPinIcon className="h-4 w-4 mr-2 text-gray-400" />
+                                <MapPinIcon className="h-4 w-4 mr-2 text-gray-400" variant="float" />
                                 {prediction.description}
                               </div>
                             </button>
@@ -510,7 +510,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
                     disabled={!newPassengerName.trim() || !newPassengerAddress.trim()}
                     className="w-full md:w-auto px-4 py-2 bg-golffox-blue-light text-white text-sm font-semibold rounded-lg hover:bg-golffox-blue-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
-                    <PlusCircleIcon className="h-4 w-4 mr-2 inline" />
+                    <PlusCircleIcon className="h-4 w-4 mr-2 inline" variant="bounce" />
                     Adicionar Passageiro
                   </button>
                 </div>
@@ -529,7 +529,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center mb-2">
-                                  <UserIcon className="h-4 w-4 mr-2 text-golffox-gray-medium"/>
+                                  <UserIcon className="h-4 w-4 mr-2 text-golffox-gray-medium" variant="hover"/>
                                   <p className="font-semibold text-golffox-gray-dark">{p.name}</p>
                                   {p.cpf !== '000.000.000-00' && (
                                     <span className="ml-2 text-xs text-golffox-gray-medium bg-gray-100 px-2 py-1 rounded">
@@ -538,11 +538,11 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
                                   )}
                                 </div>
                                 <div className="flex items-center mb-2">
-                                  <MapPinIcon className="h-4 w-4 mr-2 text-golffox-gray-medium"/>
+                                  <MapPinIcon className="h-4 w-4 mr-2 text-golffox-gray-medium" variant="float"/>
                                   <p className="text-sm text-golffox-gray-medium">{p.address}</p>
                                 </div>
                                 <div className="flex items-center">
-                                  <ClockIcon className="h-4 w-4 mr-2 text-golffox-gray-medium"/>
+                                  <ClockIcon className="h-4 w-4 mr-2 text-golffox-gray-medium" variant="rotate"/>
                                   <p className="text-sm text-golffox-gray-medium">
                                     Horário de coleta: <span className="font-medium">{p.pickupTime}</span>
                                   </p>

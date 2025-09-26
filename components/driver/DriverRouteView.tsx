@@ -281,11 +281,11 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                         <h1 className="text-lg sm:text-xl font-bold truncate">{route.name}</h1>
                         <div className="flex items-center mt-1 space-x-2 sm:space-x-4 text-xs sm:text-sm">
                             <div className="flex items-center">
-                                <TruckIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 opacity-80" />
+                                <TruckIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 opacity-80" variant="scale" />
                                 <span className="opacity-90">{route.vehicle}</span>
                             </div>
                             <div className="flex items-center">
-                                <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 opacity-80" />
+                                <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 opacity-80" variant="rotate" />
                                 <span className="opacity-90">06:00 - 18:00</span>
                             </div>
                         </div>
@@ -371,7 +371,7 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2 sm:space-x-3">
                             <div className="bg-blue-100 p-1.5 sm:p-2 rounded-lg">
-                                <UsersIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                                <UsersIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" variant="float" />
                             </div>
                             <h2 className="text-base sm:text-lg font-bold text-gray-800">Passageiros</h2>
                         </div>
@@ -410,7 +410,7 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                                 <div className="flex-grow min-w-0">
                                     <p className="font-semibold text-gray-800 mb-1 text-sm sm:text-base truncate">{passenger.name}</p>
                                     <div className="flex items-center space-x-1 sm:space-x-2">
-                                        <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 flex-shrink-0" />
+                                        <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 flex-shrink-0" variant="rotate" />
                                         <span className="text-xs sm:text-sm text-gray-600 font-medium truncate">
                                             {estimatedTime ? estimatedTime : passenger.pickupTime}
                                         </span>
@@ -434,7 +434,7 @@ const DriverRouteView: React.FC<DriverRouteViewProps> = ({ onStartNavigation }) 
                     onClick={onStartNavigation}
                     className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 sm:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                 >
-                    <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5" variant="premium" />
                     <span className="text-sm sm:text-base">Iniciar Navegação</span>
                     <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></div>
                 </button>

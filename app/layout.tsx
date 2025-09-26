@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import '../index.css'
 import { AppProvider } from './providers'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata: Metadata = {
   title: 'Golffox Management Panel',
@@ -15,8 +17,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans antialiased">
+        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+        <Script
+          id="tailwind-config"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               // Polyfill for process.env to prevent app crash on load
@@ -47,15 +57,10 @@ export default function RootLayout({
             `,
           }}
         />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-sans antialiased">
         <AppProvider>
           {children}
         </AppProvider>
+        <SpeedInsights />
       </body>
     </html>
   )

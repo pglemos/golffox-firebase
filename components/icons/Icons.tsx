@@ -1,40 +1,86 @@
+'use client';
+
 import React from 'react';
+import { AnimatedIcon } from './AnimatedIcon';
 
-export type IconProps = React.SVGProps<SVGSVGElement>;
+export type IconProps = React.SVGProps<SVGSVGElement> & {
+  animated?: boolean;
+  variant?: 'hover' | 'pulse' | 'bounce' | 'rotate' | 'scale' | 'float' | 'glow' | 'premium';
+};
 
-export const DashboardIcon: React.FC<IconProps> = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <defs>
-      <linearGradient id="dashboardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="currentColor" stopOpacity="0.1"/>
-        <stop offset="100%" stopColor="currentColor" stopOpacity="0.05"/>
-      </linearGradient>
-    </defs>
-    <rect x="3" y="3" width="7" height="7" rx="2" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5}/>
-    <rect x="14" y="3" width="7" height="7" rx="2" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5}/>
-    <rect x="3" y="14" width="7" height="7" rx="2" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5}/>
-    <rect x="14" y="14" width="7" height="7" rx="2" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5}/>
-    <circle cx="6.5" cy="6.5" r="1" fill="currentColor"/>
-    <circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>
-    <circle cx="6.5" cy="17.5" r="1" fill="currentColor"/>
-    <circle cx="17.5" cy="17.5" r="1" fill="currentColor"/>
-  </svg>
-);
+export const DashboardIcon: React.FC<IconProps> = ({ animated = true, variant = 'premium', ...props }) => {
+  const IconSVG = (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <defs>
+        <linearGradient id="dashboardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.15"/>
+          <stop offset="50%" stopColor="currentColor" stopOpacity="0.08"/>
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.03"/>
+        </linearGradient>
+        <filter id="dashboardGlow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <rect x="3" y="3" width="7" height="7" rx="2.5" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5} filter="url(#dashboardGlow)"/>
+      <rect x="14" y="3" width="7" height="7" rx="2.5" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5} filter="url(#dashboardGlow)"/>
+      <rect x="3" y="14" width="7" height="7" rx="2.5" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5} filter="url(#dashboardGlow)"/>
+      <rect x="14" y="14" width="7" height="7" rx="2.5" fill="url(#dashboardGradient)" stroke="currentColor" strokeWidth={1.5} filter="url(#dashboardGlow)"/>
+      <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" opacity="0.8"/>
+      <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" opacity="0.8"/>
+      <circle cx="6.5" cy="17.5" r="1.2" fill="currentColor" opacity="0.8"/>
+      <circle cx="17.5" cy="17.5" r="1.2" fill="currentColor" opacity="0.8"/>
+      <circle cx="6.5" cy="6.5" r="0.5" fill="currentColor"/>
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
+      <circle cx="6.5" cy="17.5" r="0.5" fill="currentColor"/>
+      <circle cx="17.5" cy="17.5" r="0.5" fill="currentColor"/>
+    </svg>
+  );
 
-export const MapIcon: React.FC<IconProps> = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <defs>
-      <linearGradient id="mapGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="currentColor" stopOpacity="0.1"/>
-        <stop offset="100%" stopColor="currentColor" stopOpacity="0.05"/>
-      </linearGradient>
-    </defs>
-    <path strokeLinecap="round" strokeLinejoin="round" fill="url(#mapGradient)" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13v-6m0-6V4a1 1 0 011.447-.894l5.447 2.724A1 1 0 0121 6.618v10.764a1 1 0 01-1.447.894L15 17m-6 3v-6m6-3v6" />
-    <circle cx="7" cy="9" r="1.5" fill="currentColor"/>
-    <circle cx="17" cy="11" r="1.5" fill="currentColor"/>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M7 9l3 2m4 0l3-2" stroke="currentColor" strokeWidth={1} opacity="0.6"/>
-  </svg>
-);
+  return animated ? (
+    <AnimatedIcon variant={variant}>
+      {IconSVG}
+    </AnimatedIcon>
+  ) : IconSVG;
+};
+
+export const MapIcon: React.FC<IconProps> = ({ animated = true, variant = 'float', ...props }) => {
+  const IconSVG = (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <defs>
+        <linearGradient id="mapGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.15"/>
+          <stop offset="50%" stopColor="currentColor" stopOpacity="0.08"/>
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.03"/>
+        </linearGradient>
+        <filter id="mapGlow">
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <path strokeLinecap="round" strokeLinejoin="round" fill="url(#mapGradient)" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13v-6m0-6V4a1 1 0 011.447-.894l5.447 2.724A1 1 0 0121 6.618v10.764a1 1 0 01-1.447.894L15 17m-6 3v-6m6-3v6" filter="url(#mapGlow)"/>
+      <circle cx="7" cy="9" r="2" fill="currentColor" opacity="0.3"/>
+      <circle cx="17" cy="11" r="2" fill="currentColor" opacity="0.3"/>
+      <circle cx="7" cy="9" r="1.2" fill="currentColor"/>
+      <circle cx="17" cy="11" r="1.2" fill="currentColor"/>
+      <circle cx="7" cy="9" r="0.5" fill="white"/>
+      <circle cx="17" cy="11" r="0.5" fill="white"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 9l3 2m4 0l3-2" stroke="currentColor" strokeWidth={1} opacity="0.6"/>
+    </svg>
+  );
+
+  return animated ? (
+    <AnimatedIcon variant={variant}>
+      {IconSVG}
+    </AnimatedIcon>
+  ) : IconSVG;
+};
 
 export const RouteIcon: React.FC<IconProps> = (props) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -53,21 +99,39 @@ export const RouteIcon: React.FC<IconProps> = (props) => (
   </svg>
 );
 
-export const AlertIcon: React.FC<IconProps> = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <defs>
-      <linearGradient id="alertGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="currentColor" stopOpacity="0.1"/>
-        <stop offset="100%" stopColor="currentColor" stopOpacity="0.05"/>
-      </linearGradient>
-    </defs>
-    <path strokeLinecap="round" strokeLinejoin="round" fill="url(#alertGradient)" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7C18 6.279 15.458 4 12.25 4S6.5 6.279 6.5 9.05v.7a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
-    <circle cx="12" cy="9" r="1.5" fill="currentColor"/>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v2" stroke="currentColor" strokeWidth={1.5}/>
-    <circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.8"/>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M18 5v2m0 0h-1m1 0h1" stroke="white" strokeWidth={1}/>
-  </svg>
-);
+export const AlertIcon: React.FC<IconProps> = ({ animated = true, variant = 'pulse', ...props }) => {
+  const IconSVG = (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <defs>
+        <linearGradient id="alertGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff6b6b" stopOpacity="0.2"/>
+          <stop offset="50%" stopColor="currentColor" stopOpacity="0.1"/>
+          <stop offset="100%" stopColor="#ff6b6b" stopOpacity="0.05"/>
+        </linearGradient>
+        <filter id="alertGlow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <path strokeLinecap="round" strokeLinejoin="round" fill="url(#alertGradient)" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7C18 6.279 15.458 4 12.25 4S6.5 6.279 6.5 9.05v.7a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" filter="url(#alertGlow)"/>
+      <circle cx="12" cy="9" r="1.5" fill="#ff6b6b"/>
+      <circle cx="12" cy="9" r="0.8" fill="white"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v2" stroke="#ff6b6b" strokeWidth={2.5}/>
+      <circle cx="18" cy="6" r="3" fill="#ff6b6b" opacity="0.9" filter="url(#alertGlow)"/>
+      <circle cx="18" cy="6" r="1.5" fill="white"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 5v2m0 0h-1m1 0h1" stroke="#ff6b6b" strokeWidth={1.5}/>
+    </svg>
+  );
+
+  return animated ? (
+    <AnimatedIcon variant={variant}>
+      {IconSVG}
+    </AnimatedIcon>
+  ) : IconSVG;
+};
 
 export const ReportIcon: React.FC<IconProps> = (props) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -192,11 +256,45 @@ export const MapPinIcon: React.FC<IconProps> = (props) => (
     </svg>
 );
 
-export const BellIcon: React.FC<IconProps> = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-      <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12 18a.75.75 0 01-.75-.75V15.75a.75.75 0 011.5 0v1.5a.75.75 0 01-.75.75zM12 13.5a.75.75 0 01-.75-.75V7.5a.75.75 0 011.5 0v5.25a.75.75 0 01-.75.75z" clipRule="evenodd" />
+export const BellIcon: React.FC<IconProps> = ({ animated = true, variant = 'bounce', ...props }) => {
+  const IconSVG = (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <defs>
+        <linearGradient id="bellGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.15"/>
+          <stop offset="50%" stopColor="currentColor" stopOpacity="0.08"/>
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.03"/>
+        </linearGradient>
+        <filter id="bellGlow">
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="notificationGlow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <path strokeLinecap="round" strokeLinejoin="round" fill="url(#bellGradient)" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7C18 6.279 15.458 4 12.25 4S6.5 6.279 6.5 9.05v.7a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" filter="url(#bellGlow)"/>
+      <circle cx="18" cy="6" r="4" fill="#ff4757" opacity="0.3" filter="url(#notificationGlow)"/>
+      <circle cx="18" cy="6" r="3" fill="#ff4757" opacity="0.9"/>
+      <circle cx="18" cy="6" r="1.5" fill="white"/>
+      <text x="18" y="7.5" textAnchor="middle" fontSize="10" fill="#ff4757" fontWeight="bold">!</text>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 19a2 2 0 004 0" stroke="currentColor" strokeWidth={1.5}/>
     </svg>
-);
+  );
+
+  return animated ? (
+    <AnimatedIcon variant={variant}>
+      {IconSVG}
+    </AnimatedIcon>
+  ) : IconSVG;
+};
   
 export const ExclamationCircleIcon: React.FC<IconProps> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
