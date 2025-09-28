@@ -1,18 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Driver, DriverPerformance } from '../types';
-import { MOCK_DRIVERS } from '../constants';
+import Image from 'next/image';
+import { Driver, DriverPerformance } from '../config/types';
+import { MOCK_DRIVERS } from '../config/constants';
 import DriverRegistrationForm from './DriverRegistrationForm';
 import { TruckIcon, ChartBarIcon, FlagCheckeredIcon, ClockIcon } from './icons/Icons';
 
-const DriversManagement: React.FC = () => {
-    const [drivers, setDrivers] = useState<Driver[]>(MOCK_DRIVERS);
-    const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-    const [showRegistrationForm, setShowRegistrationForm] = useState(false);
-    const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
-    const [activeTab, setActiveTab] = useState<'drivers' | 'ranking'>('drivers');
-
-    // Mock data para performance dos motoristas
-    const MOCK_DRIVER_PERFORMANCE: DriverPerformance[] = [
+// Mock data para performance dos motoristas
+const MOCK_DRIVER_PERFORMANCE: DriverPerformance[] = [
         {
             id: 'dp1',
             driverId: 'd1',
@@ -82,6 +76,13 @@ const DriversManagement: React.FC = () => {
             monthlyPoints: 2180
         }
     ];
+
+const DriversManagement: React.FC = () => {
+    const [drivers, setDrivers] = useState<Driver[]>(MOCK_DRIVERS);
+    const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+    const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+    const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+    const [activeTab, setActiveTab] = useState<'drivers' | 'ranking'>('drivers');
 
     const sortedPerformance = useMemo(() => {
         return [...MOCK_DRIVER_PERFORMANCE].sort((a, b) => b.overallScore - a.overallScore);
@@ -270,10 +271,12 @@ const DriversManagement: React.FC = () => {
                                 <tr key={driver.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <img
+                                            <Image
                                                 className="h-10 w-10 rounded-full"
                                                 src={driver.photoUrl}
                                                 alt={driver.name}
+                                                width={40}
+                                                height={40}
                                             />
                                             <div className="ml-4">
                                                 <div className="text-sm font-medium text-gray-900">
@@ -436,10 +439,12 @@ const DriversManagement: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
-                                                    <img
+                                                    <Image
                                                         className="h-10 w-10 rounded-full"
                                                         src={performance.driverPhoto}
                                                         alt={performance.driverName}
+                                                        width={40}
+                                                        height={40}
                                                     />
                                                     <div className="ml-4">
                                                         <div className="text-sm font-medium text-gray-900">
@@ -549,10 +554,12 @@ const DriversManagement: React.FC = () => {
                                                 <p className="text-sm opacity-90">{performance.level}</p>
                                             </div>
                                         </div>
-                                        <img
+                                        <Image
                                             className="h-16 w-16 rounded-full border-4 border-white"
                                             src={performance.driverPhoto}
                                             alt={performance.driverName}
+                                            width={64}
+                                            height={64}
                                         />
                                     </div>
                                 </div>

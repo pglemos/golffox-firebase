@@ -1,6 +1,7 @@
 import React from 'react';
-import type { View } from '../types';
-import { VIEWS, GOLFFOX_LOGO_BASE64 } from '../constants';
+import Image from 'next/image';
+import type { View } from '../config/types';
+import { VIEWS, GOLFFOX_LOGO_BASE64 } from '../config/constants';
 import { DashboardIcon, MapIcon, RouteIcon, AlertIcon, ReportIcon, TruckIcon, UserCircleIcon, LifebuoyIcon, BuildingOfficeIcon, AdjustmentsHorizontalIcon, ClockIcon, CurrencyDollarIcon } from './icons/Icons';
 
 interface SidebarProps {
@@ -33,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
   return (
     <aside className="w-64 bg-golffox-blue-dark text-white p-6 flex flex-col shadow-lg h-full">
       <div className="flex items-center mb-10">
-        <img src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-12" />
+        <Image src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-12" width={48} height={48} />
       </div>
       <nav>
         <ul>

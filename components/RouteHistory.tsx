@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { RouteHistory } from '../types';
+import type { RouteHistory } from '../config/types';
 import { ChartBarIcon, ClockIcon, TruckIcon, UserGroupIcon, MapIcon } from './icons/Icons';
 
 // Mock data para demonstração

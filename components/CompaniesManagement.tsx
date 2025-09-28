@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Company, Employee, PermissionProfile } from '../types';
+import type { Company, Employee, PermissionProfile } from '../config/types';
 import { PlusCircleIcon, PencilIcon, TrashIcon, XMarkIcon, UserGroupIcon, KeyIcon } from './icons/Icons';
 
 const getStatusClass = (status: 'Ativo' | 'Inativo') => {

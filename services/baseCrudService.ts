@@ -1,391 +1,420 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { getSupabaseClient } from '../lib/supabase'
-import type { Database } from '../lib/supabase'
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  startAfter, 
+  QueryConstraint,
+  DocumentSnapshot,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Tipos genéricos para operações CRUD
 export interface CrudResponse<T> {
-  data: T | null
-  error: string | null
-  count?: number
+  data: T | null;
+  error: string | null;
+  count?: number;
 }
 
 export interface CrudListResponse<T> {
-  data: T[]
-  error: string | null
-  count?: number
-  totalCount?: number
+  data: T[];
+  error: string | null;
+  count?: number;
+  totalCount?: number;
 }
 
 export interface PaginationOptions {
-  page?: number
-  limit?: number
-  offset?: number
+  page?: number;
+  limit?: number;
+  offset?: number;
+  lastDoc?: DocumentSnapshot;
 }
 
 export interface FilterOptions {
-  [key: string]: any
+  [key: string]: any;
 }
 
 export interface SortOptions {
-  column: string
-  ascending?: boolean
+  column: string;
+  ascending?: boolean;
 }
 
-// Classe base para operações CRUD
-export abstract class BaseCrudService<
-  TRow,
-  TInsert,
-  TUpdate,
-  TTable extends keyof Database['public']['Tables']
-> {
-  protected client: SupabaseClient
-  protected tableName: TTable
-  protected useAdmin: boolean
+// Classe base para operações CRUD com Firebase
+export abstract class BaseCrudService<T> {
+  protected collectionName: string;
 
-  constructor(tableName: TTable, useAdmin = false) {
-    this.tableName = tableName
-    this.useAdmin = useAdmin
-    this.client = getSupabaseClient(useAdmin)
+  constructor(collectionName: string) {
+    this.collectionName = collectionName;
   }
 
   /**
-   * Busca um registro por ID
+   * Busca um documento por ID
    */
-  async findById(id: string): Promise<CrudResponse<TRow>> {
+  async getById(id: string): Promise<CrudResponse<T>> {
     try {
-      const { data, error } = await this.client
-        .from(this.tableName)
-        .select('*')
-        .eq('id', id)
-        .single()
+      const docRef = doc(db, this.collectionName, id);
+      const docSnap = await getDoc(docRef);
 
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
+      if (!docSnap.exists()) {
+        return {
+          data: null,
+          error: 'Documento não encontrado'
+        };
       }
 
-      return { data: data as TRow, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro ao buscar registro: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
+      const data = {
+        id: docSnap.id,
+        ...docSnap.data()
+      } as T;
+
+      return {
+        data,
+        error: null
+      };
+    } catch (error: any) {
+      console.error(`Erro ao buscar documento ${id}:`, error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao buscar documento'
+      };
     }
   }
 
   /**
-   * Lista todos os registros com paginação e filtros
+   * Lista documentos com filtros, ordenação e paginação
    */
-  async findAll(
-    options: {
-      pagination?: PaginationOptions
-      filters?: FilterOptions
-      sort?: SortOptions
-      select?: string
-    } = {}
-  ): Promise<CrudListResponse<TRow>> {
+  async list(
+    filters?: FilterOptions,
+    sort?: SortOptions,
+    pagination?: PaginationOptions
+  ): Promise<CrudListResponse<T>> {
     try {
-      let query = this.client.from(this.tableName).select(options.select || '*', { count: 'exact' })
+      const constraints: QueryConstraint[] = [];
 
       // Aplicar filtros
-      if (options.filters) {
-        Object.entries(options.filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') {
-            if (Array.isArray(value)) {
-              query = query.in(key, value)
-            } else if (typeof value === 'string' && value.includes('%')) {
-              query = query.ilike(key, value)
-            } else {
-              query = query.eq(key, value)
-            }
+      if (filters) {
+        Object.entries(filters).forEach(([field, value]) => {
+          if (value !== undefined && value !== null) {
+            constraints.push(where(field, '==', value));
           }
-        })
+        });
       }
 
       // Aplicar ordenação
-      if (options.sort) {
-        query = query.order(options.sort.column, { ascending: options.sort.ascending ?? true })
+      if (sort) {
+        constraints.push(orderBy(sort.column, sort.ascending !== false ? 'asc' : 'desc'));
       }
 
       // Aplicar paginação
-      if (options.pagination) {
-        const { page = 1, limit = 50, offset } = options.pagination
-        const startIndex = offset ?? (page - 1) * limit
-        const endIndex = startIndex + limit - 1
-        query = query.range(startIndex, endIndex)
+      if (pagination?.limit) {
+        constraints.push(limit(pagination.limit));
       }
 
-      const { data, error, count } = await query
-
-      if (error) {
-        return { data: [], error: this.translateError(error.message), count: 0 }
+      if (pagination?.lastDoc) {
+        constraints.push(startAfter(pagination.lastDoc));
       }
 
-      return { 
-        data: (data as TRow[]) || [], 
-        error: null, 
-        count: data?.length || 0,
-        totalCount: count || 0
-      }
-    } catch (error) {
-      return { 
-        data: [], 
-        error: `Erro ao listar registros: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        count: 0
-      }
+      const q = query(collection(db, this.collectionName), ...constraints);
+      const querySnapshot = await getDocs(q);
+
+      const data: T[] = [];
+      querySnapshot.forEach((doc) => {
+        data.push({
+          id: doc.id,
+          ...doc.data()
+        } as T);
+      });
+
+      return {
+        data,
+        error: null,
+        count: data.length,
+        totalCount: data.length
+      };
+    } catch (error: any) {
+      console.error('Erro ao listar documentos:', error);
+      return {
+        data: [],
+        error: error.message || 'Erro ao listar documentos'
+      };
     }
   }
 
   /**
-   * Cria um novo registro
+   * Cria um novo documento
    */
-  async create(data: TInsert): Promise<CrudResponse<TRow>> {
+  async create(data: Omit<T, 'id'>): Promise<CrudResponse<T>> {
     try {
-      const { data: result, error } = await this.client
-        .from(this.tableName)
-        .insert(data)
-        .select()
-        .single()
+      const docData = {
+        ...data,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
 
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
+      const docRef = await addDoc(collection(db, this.collectionName), docData);
+      
+      // Buscar o documento criado para retornar com timestamps convertidos
+      const createdDoc = await getDoc(docRef);
+      
+      if (!createdDoc.exists()) {
+        return {
+          data: null,
+          error: 'Erro ao recuperar documento criado'
+        };
       }
 
-      return { data: result as TRow, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro ao criar registro: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
+      const result = {
+        id: createdDoc.id,
+        ...createdDoc.data()
+      } as T;
+
+      return {
+        data: result,
+        error: null
+      };
+    } catch (error: any) {
+      console.error('Erro ao criar documento:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao criar documento'
+      };
     }
   }
 
   /**
-   * Cria múltiplos registros
+   * Atualiza um documento existente
    */
-  async createMany(data: TInsert[]): Promise<CrudListResponse<TRow>> {
+  async update(id: string, data: Partial<Omit<T, 'id'>>): Promise<CrudResponse<T>> {
     try {
-      const { data: result, error } = await this.client
-        .from(this.tableName)
-        .insert(data)
-        .select()
-
-      if (error) {
-        return { data: [], error: this.translateError(error.message) }
+      const docRef = doc(db, this.collectionName, id);
+      
+      // Verificar se o documento existe
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        return {
+          data: null,
+          error: 'Documento não encontrado'
+        };
       }
 
-      return { data: (result as TRow[]) || [], error: null, count: result?.length || 0 }
-    } catch (error) {
-      return { 
-        data: [], 
-        error: `Erro ao criar registros: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        count: 0
+      const updateData = {
+        ...data,
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(docRef, updateData);
+
+      // Buscar o documento atualizado
+      const updatedDoc = await getDoc(docRef);
+      
+      if (!updatedDoc.exists()) {
+        return {
+          data: null,
+          error: 'Erro ao recuperar documento atualizado'
+        };
       }
+
+      const result = {
+        id: updatedDoc.id,
+        ...updatedDoc.data()
+      } as T;
+
+      return {
+        data: result,
+        error: null
+      };
+    } catch (error: any) {
+      console.error(`Erro ao atualizar documento ${id}:`, error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao atualizar documento'
+      };
     }
   }
 
   /**
-   * Atualiza um registro por ID
+   * Remove um documento
    */
-  async update(id: string, data: TUpdate): Promise<CrudResponse<TRow>> {
+  async delete(id: string): Promise<{ error: string | null }> {
     try {
-      const { data: result, error } = await this.client
-        .from(this.tableName)
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
+      const docRef = doc(db, this.collectionName, id);
+      
+      // Verificar se o documento existe
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        return {
+          error: 'Documento não encontrado'
+        };
       }
 
-      return { data: result as TRow, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro ao atualizar registro: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
+      await deleteDoc(docRef);
+
+      return {
+        error: null
+      };
+    } catch (error: any) {
+      console.error(`Erro ao deletar documento ${id}:`, error);
+      return {
+        error: error.message || 'Erro ao deletar documento'
+      };
     }
   }
 
   /**
-   * Atualiza múltiplos registros com filtros
+   * Busca documentos com filtros complexos
    */
-  async updateMany(filters: FilterOptions, data: TUpdate): Promise<CrudListResponse<TRow>> {
+  async findWhere(
+    field: string, 
+    operator: '==' | '!=' | '<' | '<=' | '>' | '>=' | 'array-contains' | 'in' | 'array-contains-any' | 'not-in',
+    value: any,
+    sort?: SortOptions,
+    pagination?: PaginationOptions
+  ): Promise<CrudListResponse<T>> {
     try {
-      let query = this.client.from(this.tableName).update(data)
+      const constraints: QueryConstraint[] = [
+        where(field, operator as any, value)
+      ];
+
+      // Aplicar ordenação
+      if (sort) {
+        constraints.push(orderBy(sort.column, sort.ascending !== false ? 'asc' : 'desc'));
+      }
+
+      // Aplicar paginação
+      if (pagination?.limit) {
+        constraints.push(limit(pagination.limit));
+      }
+
+      if (pagination?.lastDoc) {
+        constraints.push(startAfter(pagination.lastDoc));
+      }
+
+      const q = query(collection(db, this.collectionName), ...constraints);
+      const querySnapshot = await getDocs(q);
+
+      const data: T[] = [];
+      querySnapshot.forEach((doc) => {
+        data.push({
+          id: doc.id,
+          ...doc.data()
+        } as T);
+      });
+
+      return {
+        data,
+        error: null,
+        count: data.length,
+        totalCount: data.length
+      };
+    } catch (error: any) {
+      console.error('Erro ao buscar documentos com filtro:', error);
+      return {
+        data: [],
+        error: error.message || 'Erro ao buscar documentos'
+      };
+    }
+  }
+
+  /**
+   * Conta o número de documentos que atendem aos filtros
+   */
+  async count(filters?: FilterOptions): Promise<{ count: number; error: string | null }> {
+    try {
+      const constraints: QueryConstraint[] = [];
 
       // Aplicar filtros
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          query = query.eq(key, value)
-        }
-      })
-
-      const { data: result, error } = await query.select()
-
-      if (error) {
-        return { data: [], error: this.translateError(error.message) }
-      }
-
-      return { data: (result as TRow[]) || [], error: null, count: result?.length || 0 }
-    } catch (error) {
-      return { 
-        data: [], 
-        error: `Erro ao atualizar registros: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        count: 0
-      }
-    }
-  }
-
-  /**
-   * Remove um registro por ID
-   */
-  async delete(id: string): Promise<CrudResponse<TRow>> {
-    try {
-      const { data: result, error } = await this.client
-        .from(this.tableName)
-        .delete()
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
-      }
-
-      return { data: result as TRow, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro ao remover registro: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
-    }
-  }
-
-  /**
-   * Remove múltiplos registros com filtros
-   */
-  async deleteMany(filters: FilterOptions): Promise<CrudListResponse<TRow>> {
-    try {
-      let query = this.client.from(this.tableName).delete()
-
-      // Aplicar filtros
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          query = query.eq(key, value)
-        }
-      })
-
-      const { data: result, error } = await query.select()
-
-      if (error) {
-        return { data: [], error: this.translateError(error.message) }
-      }
-
-      return { data: (result as TRow[]) || [], error: null, count: result?.length || 0 }
-    } catch (error) {
-      return { 
-        data: [], 
-        error: `Erro ao remover registros: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        count: 0
-      }
-    }
-  }
-
-  /**
-   * Conta registros com filtros
-   */
-  async count(filters: FilterOptions = {}): Promise<CrudResponse<number>> {
-    try {
-      let query = this.client.from(this.tableName).select('*', { count: 'exact', head: true })
-
-      // Aplicar filtros
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (Array.isArray(value)) {
-            query = query.in(key, value)
-          } else {
-            query = query.eq(key, value)
+      if (filters) {
+        Object.entries(filters).forEach(([field, value]) => {
+          if (value !== undefined && value !== null) {
+            constraints.push(where(field, '==', value));
           }
-        }
-      })
-
-      const { count, error } = await query
-
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
+        });
       }
 
-      return { data: count || 0, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro ao contar registros: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
+      const q = query(collection(db, this.collectionName), ...constraints);
+      const querySnapshot = await getDocs(q);
+
+      return {
+        count: querySnapshot.size,
+        error: null
+      };
+    } catch (error: any) {
+      console.error('Erro ao contar documentos:', error);
+      return {
+        count: 0,
+        error: error.message || 'Erro ao contar documentos'
+      };
     }
   }
 
   /**
-   * Verifica se um registro existe
+   * Verifica se um documento existe
    */
-  async exists(id: string): Promise<CrudResponse<boolean>> {
+  async exists(id: string): Promise<{ exists: boolean; error: string | null }> {
     try {
-      const { count, error } = await this.client
-        .from(this.tableName)
-        .select('*', { count: 'exact', head: true })
-        .eq('id', id)
+      const docRef = doc(db, this.collectionName, id);
+      const docSnap = await getDoc(docRef);
 
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
-      }
-
-      return { data: (count || 0) > 0, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro ao verificar existência: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
+      return {
+        exists: docSnap.exists(),
+        error: null
+      };
+    } catch (error: any) {
+      console.error(`Erro ao verificar existência do documento ${id}:`, error);
+      return {
+        exists: false,
+        error: error.message || 'Erro ao verificar documento'
+      };
     }
   }
 
   /**
-   * Traduz erros do Supabase para mensagens amigáveis
+   * Converte Timestamp do Firestore para Date
    */
-  protected translateError(error: string): string {
-    const errorMap: { [key: string]: string } = {
-      'duplicate key value violates unique constraint': 'Registro já existe',
-      'foreign key constraint': 'Referência inválida',
-      'check constraint': 'Dados inválidos',
-      'not null constraint': 'Campo obrigatório não preenchido',
-      'permission denied': 'Permissão negada',
-      'row level security': 'Acesso negado pelas políticas de segurança',
-      'infinite recursion detected': 'Erro de configuração de segurança',
+  protected convertTimestamp(timestamp: any): Date | undefined {
+    if (!timestamp) return undefined;
+    
+    if (timestamp instanceof Timestamp) {
+      return timestamp.toDate();
     }
-
-    for (const [key, message] of Object.entries(errorMap)) {
-      if (error.toLowerCase().includes(key)) {
-        return message
-      }
+    
+    if (timestamp.seconds) {
+      return new Date(timestamp.seconds * 1000);
     }
-
-    return `Erro no banco de dados: ${error}`
+    
+    return undefined;
   }
 
   /**
-   * Executa uma transação
+   * Processa dados do documento convertendo timestamps
    */
-  async transaction<T>(
-    callback: (client: SupabaseClient) => Promise<T>
-  ): Promise<CrudResponse<T>> {
-    try {
-      const result = await callback(this.client)
-      return { data: result, error: null }
-    } catch (error) {
-      return { 
-        data: null, 
-        error: `Erro na transação: ${error instanceof Error ? error.message : 'Erro desconhecido'}` 
-      }
+  protected processDocumentData(data: any): any {
+    const processed = { ...data };
+    
+    // Converter campos de timestamp comuns
+    if (processed.createdAt) {
+      processed.createdAt = this.convertTimestamp(processed.createdAt);
     }
+    
+    if (processed.updatedAt) {
+      processed.updatedAt = this.convertTimestamp(processed.updatedAt);
+    }
+    
+    if (processed.lastLogin) {
+      processed.lastLogin = this.convertTimestamp(processed.lastLogin);
+    }
+    
+    return processed;
   }
 }
+
+export default BaseCrudService;

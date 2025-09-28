@@ -1,89 +1,189 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
-import { handleApiError, validateRequestBody } from '../../middleware'
-import type { Database } from '@/lib/supabase'
+import {
+  createApiResponse,
+  createErrorResponse,
+  withErrorHandling,
+  validateRequiredFields,
+  validateEmail,
+  validatePhone,
+  sanitizeInput,
+  ApiError
+} from '../../middleware'
 
-type UserInsert = Database['public']['Tables']['users']['Insert']
+export interface RegisterRequest {
+  name: string
+  email: string
+  password: string
+  confirmPassword: string
+  phone: string
+  role: 'admin' | 'operator' | 'driver'
+  companyId?: string
+  companyName?: string
+  licenseNumber?: string // Para motoristas
+  licenseCategory?: string // Para motoristas
+}
+
+export interface RegisterResponse {
+  user: {
+    id: string
+    name: string
+    email: string
+    role: string
+    companyId?: string
+    companyName?: string
+    isActive: boolean
+    createdAt: Date
+  }
+  message: string
+}
+
+// Mock data para desenvolvimento
+const mockUsers: any[] = [
+  {
+    id: 'test-admin-id',
+    email: 'admin@teste.com',
+    name: 'Administrador Teste',
+    role: 'admin',
+    companyId: 'test-company-id',
+    companyName: 'GolfFox Teste',
+    isActive: true
+  }
+]
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
+  return withErrorHandling(async () => {
+    const body: RegisterRequest = await request.json()
     
-    // Validação dos campos obrigatórios
-    const validation = validateRequestBody(body, ['email', 'password', 'name', 'role'])
-    if (!validation.isValid) {
-      return NextResponse.json(
-        { error: `Campos obrigatórios ausentes: ${validation.missingFields?.join(', ')}` },
-        { status: 400 }
-      )
+    validateRequiredFields(body, [
+      'name',
+      'email',
+      'password',
+      'confirmPassword',
+      'phone',
+      'role'
+    ])
+
+    // Validações específicas
+    if (!validateEmail(body.email)) {
+      throw new ApiError('Email inválido', 400)
     }
 
-    const { email, password, name, role, company_id } = body
-
-    // Validação do role
-    const allowedRoles = ['admin', 'operator', 'driver', 'passenger']
-    if (!allowedRoles.includes(role)) {
-      return NextResponse.json(
-        { error: 'Role inválido' },
-        { status: 400 }
-      )
+    if (!validatePhone(body.phone)) {
+      throw new ApiError('Telefone inválido. Use o formato (XX) XXXXX-XXXX', 400)
     }
 
-    // Primeiro, cria o usuário no Supabase Auth usando admin client
-    const { data: authData, error: authError } = await supabaseServer.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true // Confirma email automaticamente
-    })
-
-    if (authError) {
-      return NextResponse.json(
-        { error: `Erro ao criar usuário: ${authError.message}` },
-        { status: 400 }
-      )
+    if (body.password !== body.confirmPassword) {
+      throw new ApiError('Senhas não coincidem', 400)
     }
 
-    if (!authData.user) {
-      return NextResponse.json(
-        { error: 'Falha ao criar usuário' },
-        { status: 400 }
-      )
+    if (body.password.length < 6) {
+      throw new ApiError('Senha deve ter pelo menos 6 caracteres', 400)
     }
 
-    // Depois, cria o perfil do usuário na tabela users
-    const userData = {
-      id: authData.user.id,
-      email,
-      name,
-      role,
-      company_id: company_id || null
+    // Verificar se email já existe
+    const existingUser = mockUsers.find(u => u.email === body.email.toLowerCase())
+    if (existingUser) {
+      throw new ApiError('Email já cadastrado', 400)
     }
-    
-    const { error: profileError } = await supabaseServer
-      .from('users')
-      .insert(userData as any)
 
-    if (profileError) {
-      // Se falhar ao criar perfil, remove o usuário do Auth
-      await supabaseServer.auth.admin.deleteUser(authData.user.id)
+    // Validações específicas por role
+    if (body.role === 'driver') {
+      validateRequiredFields(body, ['licenseNumber', 'licenseCategory'])
       
-      return NextResponse.json(
-        { error: `Erro ao criar perfil: ${profileError.message}` },
-        { status: 400 }
-      )
+      if (!body.licenseNumber || body.licenseNumber.length < 8) {
+        throw new ApiError('Número da CNH inválido', 400)
+      }
+
+      const validCategories = ['A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE']
+      if (!body.licenseCategory || !validCategories.includes(body.licenseCategory)) {
+        throw new ApiError('Categoria da CNH inválida', 400)
+      }
     }
 
-    return NextResponse.json({
-      message: 'Usuário registrado com sucesso',
-      user: {
-        id: authData.user.id,
-        email,
-        name,
-        role
-      }
-    })
+    if (body.role !== 'admin' && !body.companyId) {
+      throw new ApiError('ID da empresa é obrigatório para este tipo de usuário', 400)
+    }
 
-  } catch (error) {
-    return handleApiError(error)
-  }
+    // Criar novo usuário
+    const newUser = {
+      id: `user-${Date.now()}`,
+      name: sanitizeInput(body.name),
+      email: body.email.toLowerCase(),
+      phone: body.phone,
+      role: body.role,
+      companyId: body.companyId,
+      companyName: body.companyName,
+      isActive: true,
+      emailVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      profile: {
+        ...(body.role === 'driver' && {
+          licenseNumber: body.licenseNumber,
+          licenseCategory: body.licenseCategory,
+          licenseExpiryDate: null, // TODO: Implementar validação de CNH
+          medicalCertificateExpiry: null
+        })
+      }
+    }
+
+    // TODO: Implementar criação real com Firebase Auth
+    // TODO: Enviar email de verificação
+    // TODO: Hash da senha
+    
+    mockUsers.push(newUser)
+
+    // Resposta sem dados sensíveis
+    const userResponse = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      companyId: newUser.companyId,
+      companyName: newUser.companyName,
+      isActive: newUser.isActive,
+      createdAt: newUser.createdAt
+    }
+
+    // TODO: Enviar email de boas-vindas
+    // TODO: Notificar administradores da empresa (se aplicável)
+    // TODO: Criar entrada no log de auditoria
+
+    return NextResponse.json(
+      createApiResponse(
+        { user: userResponse },
+        'Usuário registrado com sucesso. Verifique seu email para ativar a conta.'
+      ),
+      { status: 201 }
+    )
+  })
+}
+
+export async function GET(request: NextRequest) {
+  return withErrorHandling(async () => {
+    // Endpoint para verificar disponibilidade de email
+    const { searchParams } = new URL(request.url)
+    const email = searchParams.get('email')
+
+    if (!email) {
+      throw new ApiError('Email é obrigatório', 400)
+    }
+
+    if (!validateEmail(email)) {
+      throw new ApiError('Email inválido', 400)
+    }
+
+    const existingUser = mockUsers.find(u => u.email === email.toLowerCase())
+    const isAvailable = !existingUser
+
+    return NextResponse.json(
+      createApiResponse(
+        { 
+          email: email.toLowerCase(),
+          available: isAvailable 
+        },
+        isAvailable ? 'Email disponível' : 'Email já cadastrado'
+      )
+    )
+  })
 }

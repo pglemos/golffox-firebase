@@ -1,0 +1,80 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Função para verificar se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função para obter dados do usuário
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Função para verificar se o usuário é admin
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+    
+    // Função para verificar se o usuário é operator
+    function isOperator() {
+      return isAuthenticated() && getUserData().role == 'operator';
+    }
+    
+    // Função para verificar se o arquivo é uma imagem válida
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+    
+    // Função para verificar se o arquivo é um documento válido
+    function isValidDocument() {
+      return request.resource.contentType.matches('application/pdf') &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+
+    // Avatares de usuários
+    match /avatars/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                      (request.auth.uid == userId || isAdmin()) &&
+                      isValidImage();
+    }
+
+    // Fotos de veículos
+    match /vehicles/{companyId}/{vehicleId}/{fileName} {
+      allow read: if isAuthenticated() && 
+                     (isAdmin() || getUserData().companyId == companyId);
+      allow write: if isAuthenticated() && 
+                      (isAdmin() || (isOperator() && getUserData().companyId == companyId)) &&
+                      isValidImage();
+    }
+
+    // Documentos de motoristas
+    match /drivers/{companyId}/{driverId}/{fileName} {
+      allow read: if isAuthenticated() && 
+                     (isAdmin() || getUserData().companyId == companyId);
+      allow write: if isAuthenticated() && 
+                      (isAdmin() || (isOperator() && getUserData().companyId == companyId)) &&
+                      (isValidImage() || isValidDocument());
+    }
+
+    // Relatórios exportados
+    match /reports/{companyId}/{fileName} {
+      allow read: if isAuthenticated() && 
+                     (isAdmin() || getUserData().companyId == companyId);
+      allow write: if isAuthenticated() && 
+                      (isAdmin() || (isOperator() && getUserData().companyId == companyId));
+    }
+
+    // Logs de sistema (apenas admin)
+    match /logs/{fileName} {
+      allow read, write: if isAdmin();
+    }
+
+    // Negar acesso a qualquer outro arquivo
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

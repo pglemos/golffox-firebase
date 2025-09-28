@@ -1,0 +1,363 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ========================================
+    // FUNÇÕES AUXILIARES
+    // ========================================
+    
+    // Função para verificar se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função para obter dados do usuário
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Função para verificar se o usuário é admin
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+    
+    // Função para verificar se o usuário é operator
+    function isOperator() {
+      return isAuthenticated() && getUserData().role == 'operator';
+    }
+    
+    // Função para verificar se o usuário é driver
+    function isDriver() {
+      return isAuthenticated() && getUserData().role == 'driver';
+    }
+    
+    // Função para verificar se o usuário é passenger
+    function isPassenger() {
+      return isAuthenticated() && getUserData().role == 'passenger';
+    }
+    
+    // Função para verificar se o usuário pertence à mesma empresa
+    function isSameCompany(companyId) {
+      return isAuthenticated() && getUserData().companyId == companyId;
+    }
+    
+    // Função para verificar se é o próprio motorista
+    function isOwnDriver(driverId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/drivers/$(driverId)) &&
+             get(/databases/$(database)/documents/drivers/$(driverId)).data.userId == request.auth.uid;
+    }
+    
+    // Função para verificar se é o próprio passageiro
+    function isOwnPassenger(passengerId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/passengers/$(passengerId)) &&
+             get(/databases/$(database)/documents/passengers/$(passengerId)).data.userId == request.auth.uid;
+    }
+
+    // ========================================
+    // REGRAS PARA PERMISSION_PROFILES
+    // ========================================
+    match /permissionProfiles/{profileId} {
+      // Todos os usuários autenticados podem ler perfis de permissão
+      allow read: if isAuthenticated();
+      
+      // Apenas admins podem criar, atualizar e deletar perfis
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ========================================
+    // REGRAS PARA COMPANIES
+    // ========================================
+    match /companies/{companyId} {
+      // Admins podem ver todas as empresas
+      // Operadores podem ver apenas sua própria empresa
+      allow read: if isAdmin() || (isOperator() && isSameCompany(companyId));
+      
+      // Apenas admins podem criar, atualizar e deletar empresas
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ========================================
+    // REGRAS PARA USERS
+    // ========================================
+    match /users/{userId} {
+      // Usuários podem ver seu próprio perfil
+      // Admins podem ver todos os usuários
+      // Operadores podem ver usuários da mesma empresa
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        isAdmin() || 
+        (isOperator() && isSameCompany(resource.data.companyId))
+      );
+      
+      // Usuários podem atualizar seu próprio perfil (campos limitados)
+      // Admins podem atualizar qualquer usuário
+      // Operadores podem atualizar usuários da mesma empresa
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.companyId == resource.data.companyId) ||
+        isAdmin() ||
+        (isOperator() && isSameCompany(resource.data.companyId))
+      );
+      
+      // Apenas admins podem criar e deletar usuários
+      allow create, delete: if isAdmin();
+    }
+
+    // ========================================
+    // REGRAS PARA DRIVERS
+    // ========================================
+    match /drivers/{driverId} {
+      // Admins podem ver todos os motoristas
+      // Operadores podem ver motoristas da mesma empresa
+      // Motoristas podem ver apenas seus próprios dados
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(resource.data.linkedCompany)) ||
+                     isOwnDriver(driverId);
+      
+      // Admins podem criar, atualizar e deletar qualquer motorista
+      // Operadores podem gerenciar motoristas da mesma empresa
+      // Motoristas podem atualizar alguns de seus próprios dados
+      allow create, delete: if isAdmin() || 
+                               (isOperator() && isSameCompany(request.resource.data.linkedCompany));
+      
+      allow update: if isAdmin() || 
+                       (isOperator() && isSameCompany(resource.data.linkedCompany)) ||
+                       (isOwnDriver(driverId) && 
+                        request.resource.data.status == resource.data.status &&
+                        request.resource.data.linkedCompany == resource.data.linkedCompany);
+    }
+
+    // ========================================
+    // REGRAS PARA VEHICLES
+    // ========================================
+    match /vehicles/{vehicleId} {
+      // Admins podem ver todos os veículos
+      // Operadores podem ver veículos relacionados à sua empresa
+      // Motoristas podem ver veículos atribuídos a eles
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(getVehicleCompany(vehicleId))) ||
+                     (isDriver() && resource.data.driverId == getDriverIdByUserId(request.auth.uid));
+      
+      // Apenas admins e operadores podem gerenciar veículos
+      allow create, update, delete: if isAdmin() || 
+                                       (isOperator() && isSameCompany(getVehicleCompany(vehicleId)));
+    }
+
+    // ========================================
+    // REGRAS PARA PASSENGERS
+    // ========================================
+    match /passengers/{passengerId} {
+      // Admins podem ver todos os passageiros
+      // Operadores podem ver passageiros da mesma empresa
+      // Passageiros podem ver apenas seus próprios dados
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(resource.data.companyId)) ||
+                     isOwnPassenger(passengerId);
+      
+      // Admins podem criar, atualizar e deletar qualquer passageiro
+      // Operadores podem gerenciar passageiros da mesma empresa
+      // Passageiros podem atualizar alguns de seus próprios dados
+      allow create, delete: if isAdmin() || 
+                               (isOperator() && isSameCompany(request.resource.data.companyId));
+      
+      allow update: if isAdmin() || 
+                       (isOperator() && isSameCompany(resource.data.companyId)) ||
+                       (isOwnPassenger(passengerId) && 
+                        request.resource.data.companyId == resource.data.companyId);
+    }
+
+    // ========================================
+    // REGRAS PARA ROUTES
+    // ========================================
+    match /routes/{routeId} {
+      // Admins podem ver todas as rotas
+      // Operadores podem ver rotas da mesma empresa
+      // Motoristas podem ver rotas atribuídas a eles
+      // Passageiros podem ver rotas que os incluem
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(resource.data.companyId)) ||
+                     (isDriver() && resource.data.driverId == getDriverIdByUserId(request.auth.uid)) ||
+                     (isPassenger() && isPassengerInRoute(routeId, request.auth.uid));
+      
+      // Apenas admins e operadores podem gerenciar rotas
+      allow create, update, delete: if isAdmin() || 
+                                       (isOperator() && isSameCompany(resource.data.companyId));
+    }
+
+    // ========================================
+    // REGRAS PARA ROUTE_PASSENGERS
+    // ========================================
+    match /routePassengers/{routePassengerId} {
+      // Admins podem ver todos os relacionamentos
+      // Operadores podem ver relacionamentos da mesma empresa
+      // Motoristas podem ver passageiros de suas rotas
+      // Passageiros podem ver suas próprias associações
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(getRouteCompany(resource.data.routeId))) ||
+                     (isDriver() && isDriverOfRoute(resource.data.routeId, request.auth.uid)) ||
+                     (isPassenger() && resource.data.passengerId == getPassengerIdByUserId(request.auth.uid));
+      
+      // Apenas admins e operadores podem gerenciar relacionamentos
+      allow create, update, delete: if isAdmin() || 
+                                       (isOperator() && isSameCompany(getRouteCompany(resource.data.routeId)));
+    }
+
+    // ========================================
+    // REGRAS PARA ALERTS
+    // ========================================
+    match /alerts/{alertId} {
+      // Usuários podem ver alertas direcionados a eles
+      // Admins podem ver todos os alertas
+      // Operadores podem ver alertas da mesma empresa
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        (isOperator() && isSameCompany(getAlertCompany(alertId)))
+      );
+      
+      // Usuários podem marcar seus próprios alertas como lidos
+      // Admins e operadores podem gerenciar alertas
+      allow update: if isAuthenticated() && (
+        (resource.data.userId == request.auth.uid && 
+         request.resource.data.isRead != resource.data.isRead) ||
+        isAdmin() ||
+        (isOperator() && isSameCompany(getAlertCompany(alertId)))
+      );
+      
+      // Apenas admins e operadores podem criar e deletar alertas
+      allow create, delete: if isAdmin() || isOperator();
+    }
+
+    // ========================================
+    // REGRAS PARA ROUTE_HISTORY
+    // ========================================
+    match /routeHistory/{historyId} {
+      // Admins podem ver todo o histórico
+      // Operadores podem ver histórico da mesma empresa
+      // Motoristas podem ver histórico de suas rotas
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(getRouteCompany(resource.data.routeId))) ||
+                     (isDriver() && resource.data.driverId == getDriverIdByUserId(request.auth.uid));
+      
+      // Apenas admins e operadores podem gerenciar histórico
+      allow create, update, delete: if isAdmin() || 
+                                       (isOperator() && isSameCompany(getRouteCompany(resource.data.routeId)));
+    }
+
+    // ========================================
+    // REGRAS PARA COST_CONTROL
+    // ========================================
+    match /costControl/{costId} {
+      // Admins podem ver todos os custos
+      // Operadores podem ver custos da mesma empresa
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(getRouteCompany(resource.data.routeId)));
+      
+      // Apenas admins e operadores podem gerenciar custos
+      allow create, update, delete: if isAdmin() || 
+                                       (isOperator() && isSameCompany(getRouteCompany(resource.data.routeId)));
+    }
+
+    // ========================================
+    // REGRAS PARA DRIVER_PERFORMANCE
+    // ========================================
+    match /driverPerformance/{performanceId} {
+      // Admins podem ver toda a performance
+      // Operadores podem ver performance de motoristas da mesma empresa
+      // Motoristas podem ver apenas sua própria performance
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(getDriverCompany(resource.data.driverId))) ||
+                     (isDriver() && resource.data.driverId == getDriverIdByUserId(request.auth.uid));
+      
+      // Apenas admins e operadores podem gerenciar performance
+      allow create, update, delete: if isAdmin() || 
+                                       (isOperator() && isSameCompany(getDriverCompany(resource.data.driverId)));
+    }
+
+    // ========================================
+    // REGRAS PARA VEHICLE_LOCATIONS
+    // ========================================
+    match /vehicleLocations/{locationId} {
+      // Admins podem ver todas as localizações
+      // Operadores podem ver localizações de veículos da mesma empresa
+      // Motoristas podem ver localizações de seus veículos
+      allow read: if isAdmin() || 
+                     (isOperator() && isSameCompany(getVehicleCompany(resource.data.vehicleId))) ||
+                     (isDriver() && isDriverOfVehicle(resource.data.vehicleId, request.auth.uid));
+      
+      // Motoristas podem atualizar localização de seus veículos
+      // Admins e operadores podem gerenciar todas as localizações
+      allow create, update: if isAdmin() || 
+                               (isOperator() && isSameCompany(getVehicleCompany(resource.data.vehicleId))) ||
+                               (isDriver() && isDriverOfVehicle(resource.data.vehicleId, request.auth.uid));
+      
+      allow delete: if isAdmin() || 
+                       (isOperator() && isSameCompany(getVehicleCompany(resource.data.vehicleId)));
+    }
+
+    // ========================================
+    // FUNÇÕES AUXILIARES PARA RELACIONAMENTOS
+    // ========================================
+    
+    // Função para obter ID do motorista pelo userId
+    function getDriverIdByUserId(userId) {
+      // Esta função precisaria ser implementada com uma consulta
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return "";
+    }
+    
+    // Função para obter ID do passageiro pelo userId
+    function getPassengerIdByUserId(userId) {
+      // Esta função precisaria ser implementada com uma consulta
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return "";
+    }
+    
+    // Função para obter empresa de um veículo
+    function getVehicleCompany(vehicleId) {
+      // Esta função precisaria ser implementada consultando o motorista/empresa
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return "";
+    }
+    
+    // Função para obter empresa de uma rota
+    function getRouteCompany(routeId) {
+      return get(/databases/$(database)/documents/routes/$(routeId)).data.companyId;
+    }
+    
+    // Função para obter empresa de um motorista
+    function getDriverCompany(driverId) {
+      // Esta função precisaria ser implementada
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return "";
+    }
+    
+    // Função para obter empresa de um alerta
+    function getAlertCompany(alertId) {
+      // Esta função precisaria ser implementada
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return "";
+    }
+    
+    // Função para verificar se passageiro está em uma rota
+    function isPassengerInRoute(routeId, userId) {
+      // Esta função precisaria ser implementada
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return false;
+    }
+    
+    // Função para verificar se motorista é de uma rota
+    function isDriverOfRoute(routeId, userId) {
+      // Esta função precisaria ser implementada
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return false;
+    }
+    
+    // Função para verificar se motorista é de um veículo
+    function isDriverOfVehicle(vehicleId, userId) {
+      // Esta função precisaria ser implementada
+      // Por limitações do Firestore Rules, pode ser necessário denormalizar dados
+      return false;
+    }
+  }
+}

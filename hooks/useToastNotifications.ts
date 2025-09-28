@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import type { Alert } from '../types';
-import { AlertType } from '../types';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import type { Alert } from '../config/types';
+import { AlertType } from '../config/types';
 import type { ToastNotification } from '../components/NotificationToast';
 import { useNotifications } from './useNotifications';
 
@@ -15,12 +15,12 @@ export function useToastNotifications(options: ToastOptions = {}) {
     const { alerts } = useNotifications();
 
     // Configurações padrão
-    const defaultOptions = {
+    const defaultOptions = useMemo(() => ({
         autoHide: true,
         duration: 5000,
         position: 'top-right' as const,
         ...options
-    };
+    }), [options]);
 
     // Adiciona um toast
     const addToast = useCallback((alert: Alert, toastOptions?: Partial<ToastOptions>) => {

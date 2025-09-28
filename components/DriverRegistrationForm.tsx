@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Driver } from '../types';
+import { Driver } from '../config/types';
 
 interface DriverRegistrationFormProps {
     onSubmit: (driver: Partial<Driver>) => void;

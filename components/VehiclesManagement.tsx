@@ -1,7 +1,7 @@
 import React from 'react';
-import { MOCK_VEHICLES } from '../constants';
-import type { Vehicle } from '../types';
-import { VehicleStatus } from '../types';
+import { MOCK_VEHICLES } from '../config/constants';
+import type { Vehicle } from '../config/types';
+import { VehicleStatus } from '../config/types';
 import { PlusCircleIcon, WrenchScrewdriverIcon, PencilIcon, TrashIcon } from './icons/Icons';
 
 const getStatusClass = (status: VehicleStatus) => {

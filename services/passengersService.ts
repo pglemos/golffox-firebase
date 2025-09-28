@@ -1,461 +1,913 @@
-import { BaseCrudService, CrudResponse, CrudListResponse } from './baseCrudService'
-import type { Database } from '../lib/supabase'
+import { BaseCrudService, CrudResponse, CrudListResponse } from './baseCrudService';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Tipos específicos para passageiros
-export type PassengerRow = Database['public']['Tables']['passengers']['Row']
-export type PassengerInsert = Database['public']['Tables']['passengers']['Insert']
-export type PassengerUpdate = Database['public']['Tables']['passengers']['Update']
+export interface Passenger {
+  id: string;
+  name: string;
+  cpf: string;
+  email?: string;
+  phone: string;
+  birthDate: Date;
+  address: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  status: 'Ativo' | 'Inativo';
+  companyId: string;
+  routeId?: string;
+  pickupLocation?: string;
+  dropoffLocation?: string;
+  pickupOrder?: number;
+  specialNeeds?: boolean;
+  specialNeedsDescription?: string;
+  emergencyContact: EmergencyContact;
+  medicalInfo?: MedicalInfo;
+  preferences?: PassengerPreferences;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-export interface PassengerWithRoutes extends PassengerRow {
+export interface PassengerInsert extends Omit<Passenger, 'id' | 'createdAt' | 'updatedAt'> {}
+
+export interface PassengerUpdate extends Partial<Omit<Passenger, 'id' | 'createdAt'>> {}
+
+export interface EmergencyContact {
+  name: string;
+  phone: string;
+  relationship: string;
+  email?: string;
+}
+
+export interface MedicalInfo {
+  allergies?: string[];
+  medications?: string[];
+  medicalConditions?: string[];
+  bloodType?: string;
+  doctorName?: string;
+  doctorPhone?: string;
+  healthInsurance?: string;
+  healthInsuranceNumber?: string;
+}
+
+export interface PassengerPreferences {
+  preferredSeat?: 'front' | 'middle' | 'back' | 'any';
+  needsAssistance?: boolean;
+  assistanceType?: string;
+  communicationPreference?: 'sms' | 'whatsapp' | 'email' | 'phone';
+  language?: string;
+}
+
+export interface PassengerWithRoutes extends Passenger {
   routes?: Array<{
-    id: string
-    name: string
-    status: string
-    pickup_time: string
-    pickup_location: string
-    dropoff_location: string
-  }>
+    id: string;
+    name: string;
+    status: string;
+    pickupTime: string;
+    pickupLocation: string;
+    dropoffLocation: string;
+  }>;
   company?: {
-    id: string
-    name: string
-    status: string
-  }
-  emergencyContact?: {
-    name: string
-    phone: string
-    relationship: string
-  }
+    id: string;
+    name: string;
+    status: string;
+  };
+  currentRoute?: {
+    id: string;
+    name: string;
+    status: string;
+    pickupTime: string;
+    driverId?: string;
+    vehicleId?: string;
+  };
 }
 
 export interface PassengerFilters {
-  name?: string
-  cpf?: string
-  email?: string
-  status?: 'Ativo' | 'Inativo'
-  company_id?: string
-  address?: string
-  special_needs?: boolean
-  route_id?: string
+  name?: string;
+  cpf?: string;
+  email?: string;
+  status?: 'Ativo' | 'Inativo';
+  companyId?: string;
+  address?: string;
+  specialNeeds?: boolean;
+  routeId?: string;
+  city?: string;
+  neighborhood?: string;
 }
 
-export class PassengersService extends BaseCrudService<
-  PassengerRow,
-  PassengerInsert,
-  PassengerUpdate,
-  'passengers'
-> {
+export interface PassengerCheckIn {
+  id: string;
+  passengerId: string;
+  routeId: string;
+  tripId: string;
+  checkInTime: Date;
+  checkInLocation: {
+    latitude: number;
+    longitude: number;
+    address: string;
+  };
+  status: 'embarcado' | 'desembarcado' | 'ausente' | 'atrasado';
+  notes?: string;
+  driverId: string;
+  vehicleId: string;
+  companyId: string;
+  createdAt: Date;
+}
+
+export class PassengersService extends BaseCrudService<Passenger> {
   constructor() {
-    super('passengers')
+    super('passengers');
   }
 
   /**
-   * Busca passageiros com rotas e empresa
+   * Busca passageiros com detalhes completos
    */
   async findAllWithDetails(): Promise<CrudListResponse<PassengerWithRoutes>> {
     try {
-      const { data: passengers, error } = await this.client
-        .from('passengers')
-        .select(`
-          *,
-          company:companies!passengers_company_id_fkey(id, name, status),
-          routes:route_passengers!route_passengers_passenger_id_fkey(
-            route:routes!route_passengers_route_id_fkey(
-              id, name, status, pickup_time, pickup_location, dropoff_location
-            )
-          )
-        `)
-        .order('name')
-
-      if (error) {
-        return { data: [], error: this.translateError(error.message) }
+      const passengersResult = await this.list();
+      
+      if (passengersResult.error) {
+        return passengersResult as CrudListResponse<PassengerWithRoutes>;
       }
 
-      const passengersWithDetails: PassengerWithRoutes[] = (passengers || []).map(passenger => ({
-        ...passenger,
-        company: passenger.company || undefined,
-        routes: passenger.routes?.map((rp: any) => rp.route) || [],
-        emergencyContact: passenger.emergency_contact ? {
-          name: passenger.emergency_contact.name,
-          phone: passenger.emergency_contact.phone,
-          relationship: passenger.emergency_contact.relationship
-        } : undefined,
-      }))
+      const passengersWithDetails: PassengerWithRoutes[] = [];
 
-      return { data: passengersWithDetails, error: null, count: passengersWithDetails.length }
-    } catch (error) {
+      for (const passenger of passengersResult.data) {
+        const details = await this.getPassengerDetails(passenger.id);
+        
+        passengersWithDetails.push({
+          ...passenger,
+          ...details
+        });
+      }
+
+      return {
+        data: passengersWithDetails,
+        error: null,
+        count: passengersWithDetails.length,
+        totalCount: passengersWithDetails.length
+      };
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros com detalhes:', error);
       return {
         data: [],
-        error: `Erro ao buscar passageiros com detalhes: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        count: 0
-      }
+        error: error.message || 'Erro ao buscar passageiros com detalhes'
+      };
     }
   }
 
   /**
-   * Busca passageiro por CPF
+   * Busca detalhes de um passageiro específico
    */
-  async findByCpf(cpf: string): Promise<CrudResponse<PassengerRow>> {
+  async getPassengerDetails(passengerId: string): Promise<{
+    routes?: Array<{ id: string; name: string; status: string; pickupTime: string; pickupLocation: string; dropoffLocation: string }>;
+    company?: { id: string; name: string; status: string };
+    currentRoute?: { id: string; name: string; status: string; pickupTime: string; driverId?: string; vehicleId?: string };
+  }> {
     try {
-      const { data, error } = await this.client
-        .from('passengers')
-        .select('*')
-        .eq('cpf', cpf)
-        .single()
-
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
+      const passenger = await this.getById(passengerId);
+      
+      if (passenger.error || !passenger.data) {
+        return {};
       }
 
-      return { data, error: null }
+      const details: any = {};
+
+      // Buscar empresa
+      const companyDoc = await getDoc(doc(db, 'companies', passenger.data.companyId));
+      if (companyDoc.exists()) {
+        const companyData = companyDoc.data();
+        details.company = {
+          id: companyDoc.id,
+          name: companyData.name,
+          status: companyData.status
+        };
+      }
+
+      // Buscar rota atual se associado
+      if (passenger.data.routeId) {
+        const routeDoc = await getDoc(doc(db, 'routes', passenger.data.routeId));
+        if (routeDoc.exists()) {
+          const routeData = routeDoc.data();
+          details.currentRoute = {
+            id: routeDoc.id,
+            name: routeData.name,
+            status: routeData.status,
+            pickupTime: routeData.pickupTime,
+            driverId: routeData.driverId,
+            vehicleId: routeData.vehicleId
+          };
+        }
+      }
+
+      // Buscar histórico de rotas
+      const routesHistory = await this.getPassengerRoutesHistory(passengerId);
+      if (routesHistory.data) {
+        details.routes = routesHistory.data;
+      }
+
+      return details;
     } catch (error) {
+      console.error('Erro ao buscar detalhes do passageiro:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Busca passageiros por empresa
+   */
+  async findByCompany(companyId: string): Promise<CrudListResponse<Passenger>> {
+    try {
+      return await this.findWhere('companyId', '==', companyId);
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros por empresa:', error);
       return {
-        data: null,
-        error: `Erro ao buscar passageiro por CPF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      }
+        data: [],
+        error: error.message || 'Erro ao buscar passageiros por empresa'
+      };
     }
   }
 
   /**
    * Busca passageiros ativos
    */
-  async findActive(): Promise<CrudListResponse<PassengerRow>> {
-    return this.findAll({
-      filters: { status: 'Ativo' },
-      sort: { column: 'name', ascending: true }
-    })
-  }
+  async findActivePassengers(companyId?: string): Promise<CrudListResponse<Passenger>> {
+    try {
+      if (companyId) {
+        const q = query(
+          collection(db, 'passengers'),
+          where('status', '==', 'Ativo'),
+          where('companyId', '==', companyId)
+        );
+        
+        const snapshot = await getDocs(q);
+        const passengers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Passenger[];
 
-  /**
-   * Busca passageiros por empresa
-   */
-  async findByCompany(companyId: string): Promise<CrudListResponse<PassengerRow>> {
-    return this.findAll({
-      filters: { company_id: companyId },
-      sort: { column: 'name', ascending: true }
-    })
+        return {
+          data: passengers,
+          error: null,
+          count: passengers.length,
+          totalCount: passengers.length
+        };
+      } else {
+        return await this.findWhere('status', '==', 'Ativo');
+      }
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros ativos:', error);
+      return {
+        data: [],
+        error: error.message || 'Erro ao buscar passageiros ativos'
+      };
+    }
   }
 
   /**
    * Busca passageiros por rota
    */
-  async findByRoute(routeId: string): Promise<CrudListResponse<PassengerRow>> {
+  async findByRoute(routeId: string): Promise<CrudListResponse<Passenger>> {
     try {
-      const { data, error } = await this.client
-        .from('passengers')
-        .select(`
-          *,
-          route_passengers!route_passengers_passenger_id_fkey(route_id)
-        `)
-        .eq('route_passengers.route_id', routeId)
-        .order('name')
-
-      if (error) {
-        return { data: [], error: this.translateError(error.message) }
-      }
-
-      return { data: data || [], error: null, count: data?.length || 0 }
-    } catch (error) {
+      return await this.findWhere('routeId', '==', routeId);
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros por rota:', error);
       return {
         data: [],
-        error: `Erro ao buscar passageiros por rota: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        count: 0
+        error: error.message || 'Erro ao buscar passageiros por rota'
+      };
+    }
+  }
+
+  /**
+   * Busca passageiro por CPF
+   */
+  async findByCpf(cpf: string): Promise<CrudResponse<Passenger>> {
+    try {
+      const formattedCpf = this.formatCpf(cpf);
+      const result = await this.findWhere('cpf', '==', formattedCpf);
+      
+      if (result.error) {
+        return {
+          data: null,
+          error: result.error
+        };
       }
+
+      return {
+        data: result.data[0] || null,
+        error: null
+      };
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiro por CPF:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao buscar passageiro por CPF'
+      };
+    }
+  }
+
+  /**
+   * Busca passageiros sem rota
+   */
+  async findWithoutRoute(companyId?: string): Promise<CrudListResponse<Passenger>> {
+    try {
+      if (companyId) {
+        const q = query(
+          collection(db, 'passengers'),
+          where('routeId', '==', null),
+          where('companyId', '==', companyId),
+          where('status', '==', 'Ativo')
+        );
+        
+        const snapshot = await getDocs(q);
+        const passengers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Passenger[];
+
+        return {
+          data: passengers,
+          error: null,
+          count: passengers.length,
+          totalCount: passengers.length
+        };
+      } else {
+        const q = query(
+          collection(db, 'passengers'),
+          where('routeId', '==', null),
+          where('status', '==', 'Ativo')
+        );
+        
+        const snapshot = await getDocs(q);
+        const passengers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Passenger[];
+
+        return {
+          data: passengers,
+          error: null,
+          count: passengers.length,
+          totalCount: passengers.length
+        };
+      }
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros sem rota:', error);
+      return {
+        data: [],
+        error: error.message || 'Erro ao buscar passageiros sem rota'
+      };
     }
   }
 
   /**
    * Busca passageiros com necessidades especiais
    */
-  async findWithSpecialNeeds(): Promise<CrudListResponse<PassengerRow>> {
-    return this.findAll({
-      filters: { special_needs: true },
-      sort: { column: 'name', ascending: true }
-    })
+  async findWithSpecialNeeds(companyId?: string): Promise<CrudListResponse<Passenger>> {
+    try {
+      if (companyId) {
+        const q = query(
+          collection(db, 'passengers'),
+          where('specialNeeds', '==', true),
+          where('companyId', '==', companyId)
+        );
+        
+        const snapshot = await getDocs(q);
+        const passengers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Passenger[];
+
+        return {
+          data: passengers,
+          error: null,
+          count: passengers.length,
+          totalCount: passengers.length
+        };
+      } else {
+        return await this.findWhere('specialNeeds', '==', true);
+      }
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros com necessidades especiais:', error);
+      return {
+        data: [],
+        error: error.message || 'Erro ao buscar passageiros com necessidades especiais'
+      };
+    }
+  }
+
+  /**
+   * Associa passageiro a uma rota
+   */
+  async assignToRoute(passengerId: string, routeId: string, pickupLocation: string, dropoffLocation: string, pickupOrder?: number): Promise<CrudResponse<Passenger>> {
+    try {
+      // Verificar se a rota existe
+      const routeDoc = await getDoc(doc(db, 'routes', routeId));
+      if (!routeDoc.exists()) {
+        return {
+          data: null,
+          error: 'Rota não encontrada'
+        };
+      }
+
+      const routeData = routeDoc.data();
+      
+      // Verificar capacidade da rota
+      if (routeData.currentPassengers >= routeData.maxPassengers) {
+        return {
+          data: null,
+          error: 'Rota já está com capacidade máxima'
+        };
+      }
+
+      // Atualizar passageiro
+      const passengerResult = await this.update(passengerId, {
+        routeId,
+        pickupLocation,
+        dropoffLocation,
+        pickupOrder: pickupOrder || 0
+      });
+
+      if (passengerResult.error) {
+        return passengerResult;
+      }
+
+      // Atualizar contador de passageiros na rota
+      await updateDoc(doc(db, 'routes', routeId), {
+        currentPassengers: routeData.currentPassengers + 1,
+        updatedAt: serverTimestamp()
+      });
+
+      return passengerResult;
+    } catch (error: any) {
+      console.error('Erro ao associar passageiro à rota:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao associar passageiro à rota'
+      };
+    }
+  }
+
+  /**
+   * Remove associação de passageiro da rota
+   */
+  async removeFromRoute(passengerId: string): Promise<CrudResponse<Passenger>> {
+    try {
+      const passenger = await this.getById(passengerId);
+      
+      if (passenger.error || !passenger.data) {
+        return {
+          data: null,
+          error: 'Passageiro não encontrado'
+        };
+      }
+
+      const routeId = passenger.data.routeId;
+
+      // Atualizar passageiro
+      const passengerResult = await this.update(passengerId, {
+        routeId: null,
+        pickupLocation: null,
+        dropoffLocation: null,
+        pickupOrder: null
+      });
+
+      if (passengerResult.error) {
+        return passengerResult;
+      }
+
+      // Atualizar contador de passageiros na rota se existir
+      if (routeId) {
+        const routeDoc = await getDoc(doc(db, 'routes', routeId));
+        if (routeDoc.exists()) {
+          const routeData = routeDoc.data();
+          await updateDoc(doc(db, 'routes', routeId), {
+            currentPassengers: Math.max(0, routeData.currentPassengers - 1),
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+
+      return passengerResult;
+    } catch (error: any) {
+      console.error('Erro ao remover passageiro da rota:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao remover passageiro da rota'
+      };
+    }
+  }
+
+  /**
+   * Registra check-in de passageiro
+   */
+  async checkIn(passengerId: string, routeId: string, tripId: string, location: { latitude: number; longitude: number; address: string }, driverId: string, vehicleId: string): Promise<CrudResponse<PassengerCheckIn>> {
+    try {
+      const passenger = await this.getById(passengerId);
+      
+      if (passenger.error || !passenger.data) {
+        return {
+          data: null,
+          error: 'Passageiro não encontrado'
+        };
+      }
+
+      const checkInData: Omit<PassengerCheckIn, 'id'> = {
+        passengerId,
+        routeId,
+        tripId,
+        checkInTime: new Date(),
+        checkInLocation: location,
+        status: 'embarcado',
+        driverId,
+        vehicleId,
+        companyId: passenger.data.companyId,
+        createdAt: new Date()
+      };
+
+      // Salvar check-in
+      const checkInRef = doc(collection(db, 'passenger_checkins'));
+      await updateDoc(checkInRef, {
+        ...checkInData,
+        createdAt: serverTimestamp()
+      });
+
+      return {
+        data: { id: checkInRef.id, ...checkInData } as PassengerCheckIn,
+        error: null
+      };
+    } catch (error: any) {
+      console.error('Erro ao registrar check-in:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao registrar check-in'
+      };
+    }
+  }
+
+  /**
+   * Registra check-out de passageiro
+   */
+  async checkOut(passengerId: string, tripId: string, location: { latitude: number; longitude: number; address: string }): Promise<CrudResponse<PassengerCheckIn>> {
+    try {
+      // Buscar check-in ativo
+      const q = query(
+        collection(db, 'passenger_checkins'),
+        where('passengerId', '==', passengerId),
+        where('tripId', '==', tripId),
+        where('status', '==', 'embarcado'),
+        orderBy('createdAt', 'desc'),
+        limit(1)
+      );
+
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        return {
+          data: null,
+          error: 'Check-in não encontrado'
+        };
+      }
+
+      const checkInDoc = snapshot.docs[0];
+      const checkInData = checkInDoc.data() as PassengerCheckIn;
+
+      // Atualizar check-in para check-out
+      await updateDoc(doc(db, 'passenger_checkins', checkInDoc.id), {
+        status: 'desembarcado',
+        checkOutTime: serverTimestamp(),
+        checkOutLocation: location
+      });
+
+      return {
+        data: { ...checkInData, status: 'desembarcado' },
+        error: null
+      };
+    } catch (error: any) {
+      console.error('Erro ao registrar check-out:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao registrar check-out'
+      };
+    }
+  }
+
+  /**
+   * Busca histórico de rotas do passageiro
+   */
+  async getPassengerRoutesHistory(passengerId: string): Promise<CrudResponse<Array<{ id: string; name: string; status: string; pickupTime: string; pickupLocation: string; dropoffLocation: string }>>> {
+    try {
+      // Buscar check-ins do passageiro
+      const q = query(
+        collection(db, 'passenger_checkins'),
+        where('passengerId', '==', passengerId),
+        orderBy('createdAt', 'desc')
+      );
+
+      const snapshot = await getDocs(q);
+      const checkIns = snapshot.docs.map(doc => doc.data());
+
+      // Buscar rotas únicas
+      const routeIds = Array.from(new Set(checkIns.map(checkIn => checkIn.routeId)));
+      const routes = [];
+
+      for (const routeId of routeIds) {
+        const routeDoc = await getDoc(doc(db, 'routes', routeId));
+        if (routeDoc.exists()) {
+          const routeData = routeDoc.data();
+          
+          // Buscar dados específicos do passageiro nesta rota
+          const passengerCheckIns = checkIns.filter(checkIn => checkIn.routeId === routeId);
+          const lastCheckIn = passengerCheckIns[0]; // Mais recente
+
+          routes.push({
+            id: routeDoc.id,
+            name: routeData.name,
+            status: routeData.status,
+            pickupTime: routeData.pickupTime,
+            pickupLocation: lastCheckIn?.checkInLocation?.address || '',
+            dropoffLocation: lastCheckIn?.checkOutLocation?.address || ''
+          });
+        }
+      }
+
+      return {
+        data: routes,
+        error: null
+      };
+    } catch (error: any) {
+      console.error('Erro ao buscar histórico de rotas:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao buscar histórico de rotas'
+      };
+    }
   }
 
   /**
    * Valida CPF
    */
   private validateCpf(cpf: string): boolean {
-    const cleanCpf = cpf.replace(/\D/g, '')
+    const cleanCpf = cpf.replace(/\D/g, '');
     
-    if (cleanCpf.length !== 11) return false
-    if (/^(\d)\1+$/.test(cleanCpf)) return false
-    
-    let sum = 0
+    if (cleanCpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cleanCpf)) return false;
+
+    let sum = 0;
     for (let i = 0; i < 9; i++) {
-      sum += parseInt(cleanCpf[i]) * (10 - i)
+      sum += parseInt(cleanCpf.charAt(i)) * (10 - i);
     }
-    
-    let digit = 11 - (sum % 11)
-    if (digit >= 10) digit = 0
-    if (parseInt(cleanCpf[9]) !== digit) return false
-    
-    sum = 0
+    let remainder = 11 - (sum % 11);
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(cleanCpf.charAt(9))) return false;
+
+    sum = 0;
     for (let i = 0; i < 10; i++) {
-      sum += parseInt(cleanCpf[i]) * (11 - i)
+      sum += parseInt(cleanCpf.charAt(i)) * (11 - i);
     }
-    
-    digit = 11 - (sum % 11)
-    if (digit >= 10) digit = 0
-    return parseInt(cleanCpf[10]) === digit
+    remainder = 11 - (sum % 11);
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(cleanCpf.charAt(10))) return false;
+
+    return true;
   }
 
   /**
-   * Valida email
+   * Formata CPF
    */
-  private validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
+  private formatCpf(cpf: string): string {
+    const cleanCpf = cpf.replace(/\D/g, '');
+    return cleanCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
 
   /**
-   * Valida telefone
+   * Verifica se CPF já está em uso
    */
-  private validatePhone(phone: string): boolean {
-    const cleanPhone = phone.replace(/\D/g, '')
-    return cleanPhone.length >= 10 && cleanPhone.length <= 11
+  async isCpfInUse(cpf: string, excludeId?: string): Promise<boolean> {
+    try {
+      const formattedCpf = this.formatCpf(cpf);
+      const result = await this.findWhere('cpf', '==', formattedCpf);
+      
+      if (result.error) {
+        return false;
+      }
+
+      const existingPassengers = result.data.filter(passenger => 
+        excludeId ? passenger.id !== excludeId : true
+      );
+
+      return existingPassengers.length > 0;
+    } catch (error) {
+      console.error('Erro ao verificar CPF:', error);
+      return false;
+    }
   }
 
   /**
-   * Cria um novo passageiro com validação
+   * Busca passageiros com filtros avançados
    */
-  async create(data: PassengerInsert): Promise<CrudResponse<PassengerRow>> {
-    // Valida CPF
-    if (!this.validateCpf(data.cpf)) {
-      return { data: null, error: 'CPF inválido' }
-    }
+  async findWithFilters(filters: PassengerFilters): Promise<CrudListResponse<Passenger>> {
+    try {
+      // Para filtros simples, usar findWhere
+      if (Object.keys(filters).length === 1) {
+        const [field, value] = Object.entries(filters)[0];
+        if (value !== undefined) {
+          return await this.findWhere(field, '==', value);
+        }
+      }
 
-    // Valida email se fornecido
-    if (data.email && !this.validateEmail(data.email)) {
-      return { data: null, error: 'Email inválido' }
-    }
+      // Para múltiplos filtros, buscar todos e filtrar no cliente
+      const allPassengers = await this.list();
+      
+      if (allPassengers.error) {
+        return allPassengers;
+      }
 
-    // Verifica se CPF já existe
-    const existingPassenger = await this.findByCpf(data.cpf)
-    if (existingPassenger.data) {
-      return { data: null, error: 'CPF já cadastrado' }
-    }
+      const filteredData = allPassengers.data.filter(passenger => {
+        if (filters.name && !passenger.name.toLowerCase().includes(filters.name.toLowerCase())) {
+          return false;
+        }
+        if (filters.cpf && !passenger.cpf.includes(filters.cpf.replace(/\D/g, ''))) {
+          return false;
+        }
+        if (filters.email && passenger.email && !passenger.email.toLowerCase().includes(filters.email.toLowerCase())) {
+          return false;
+        }
+        if (filters.status && passenger.status !== filters.status) {
+          return false;
+        }
+        if (filters.companyId && passenger.companyId !== filters.companyId) {
+          return false;
+        }
+        if (filters.routeId && passenger.routeId !== filters.routeId) {
+          return false;
+        }
+        if (filters.address && !passenger.address.toLowerCase().includes(filters.address.toLowerCase())) {
+          return false;
+        }
+        if (filters.city && !passenger.city.toLowerCase().includes(filters.city.toLowerCase())) {
+          return false;
+        }
+        if (filters.neighborhood && !passenger.neighborhood.toLowerCase().includes(filters.neighborhood.toLowerCase())) {
+          return false;
+        }
+        if (filters.specialNeeds !== undefined && passenger.specialNeeds !== filters.specialNeeds) {
+          return false;
+        }
+        return true;
+      });
 
-    return super.create(data)
+      return {
+        data: filteredData,
+        error: null,
+        count: filteredData.length,
+        totalCount: filteredData.length
+      };
+    } catch (error: any) {
+      console.error('Erro ao buscar passageiros com filtros:', error);
+      return {
+        data: [],
+        error: error.message || 'Erro ao buscar passageiros'
+      };
+    }
+  }
+
+  /**
+   * Atualiza status do passageiro
+   */
+  async updateStatus(passengerId: string, status: 'Ativo' | 'Inativo'): Promise<CrudResponse<Passenger>> {
+    try {
+      return await this.update(passengerId, { status });
+    } catch (error: any) {
+      console.error('Erro ao atualizar status do passageiro:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao atualizar status'
+      };
+    }
+  }
+
+  /**
+   * Atualiza informações de emergência
+   */
+  async updateEmergencyContact(passengerId: string, emergencyContact: EmergencyContact): Promise<CrudResponse<Passenger>> {
+    try {
+      return await this.update(passengerId, { emergencyContact });
+    } catch (error: any) {
+      console.error('Erro ao atualizar contato de emergência:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao atualizar contato de emergência'
+      };
+    }
+  }
+
+  /**
+   * Atualiza informações médicas
+   */
+  async updateMedicalInfo(passengerId: string, medicalInfo: MedicalInfo): Promise<CrudResponse<Passenger>> {
+    try {
+      return await this.update(passengerId, { medicalInfo });
+    } catch (error: any) {
+      console.error('Erro ao atualizar informações médicas:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao atualizar informações médicas'
+      };
+    }
+  }
+
+  /**
+   * Cria passageiro com validação
+   */
+  async create(data: PassengerInsert): Promise<CrudResponse<Passenger>> {
+    try {
+      // Validar CPF
+      if (!this.validateCpf(data.cpf)) {
+        return {
+          data: null,
+          error: 'CPF inválido'
+        };
+      }
+
+      // Verificar se CPF já está em uso
+      const cpfInUse = await this.isCpfInUse(data.cpf);
+      if (cpfInUse) {
+        return {
+          data: null,
+          error: 'CPF já está em uso'
+        };
+      }
+
+      // Formatar CPF
+      const formattedData: Omit<Passenger, 'id'> = {
+        ...data,
+        cpf: this.formatCpf(data.cpf),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      return await super.create(formattedData);
+    } catch (error: any) {
+      console.error('Erro ao criar passageiro:', error);
+      return {
+        data: null,
+        error: error.message || 'Erro ao criar passageiro'
+      };
+    }
   }
 
   /**
    * Atualiza passageiro com validação
    */
-  async update(id: string, data: PassengerUpdate): Promise<CrudResponse<PassengerRow>> {
-    // Se está atualizando CPF, valida
-    if (data.cpf && !this.validateCpf(data.cpf)) {
-      return { data: null, error: 'CPF inválido' }
-    }
-
-    // Se está atualizando email, valida
-    if (data.email && !this.validateEmail(data.email)) {
-      return { data: null, error: 'Email inválido' }
-    }
-
-    // Se está atualizando CPF, verifica se já existe
-    if (data.cpf) {
-      const existingPassenger = await this.findByCpf(data.cpf)
-      if (existingPassenger.data && existingPassenger.data.id !== id) {
-        return { data: null, error: 'CPF já cadastrado por outro passageiro' }
-      }
-    }
-
-    return super.update(id, data)
-  }
-
-  /**
-   * Atribui passageiro a uma rota
-   */
-  async assignToRoute(passengerId: string, routeId: string, pickupOrder?: number): Promise<CrudResponse<any>> {
+  async update(id: string, data: PassengerUpdate): Promise<CrudResponse<Passenger>> {
     try {
-      const { data, error } = await this.client
-        .from('route_passengers')
-        .insert({
-          passenger_id: passengerId,
-          route_id: routeId,
-          pickup_order: pickupOrder || 1
-        })
-        .select()
-        .single()
+      // Validar CPF se fornecido
+      if (data.cpf) {
+        if (!this.validateCpf(data.cpf)) {
+          return {
+            data: null,
+            error: 'CPF inválido'
+          };
+        }
 
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
+        // Verificar se CPF já está em uso
+        const cpfInUse = await this.isCpfInUse(data.cpf, id);
+        if (cpfInUse) {
+          return {
+            data: null,
+            error: 'CPF já está em uso'
+          };
+        }
+
+        // Formatar CPF
+        data.cpf = this.formatCpf(data.cpf);
       }
 
-      return { data, error: null }
-    } catch (error) {
+      return await super.update(id, data);
+    } catch (error: any) {
+      console.error('Erro ao atualizar passageiro:', error);
       return {
         data: null,
-        error: `Erro ao atribuir passageiro à rota: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      }
-    }
-  }
-
-  /**
-   * Remove passageiro de uma rota
-   */
-  async removeFromRoute(passengerId: string, routeId: string): Promise<CrudResponse<any>> {
-    try {
-      const { data, error } = await this.client
-        .from('route_passengers')
-        .delete()
-        .eq('passenger_id', passengerId)
-        .eq('route_id', routeId)
-        .select()
-
-      if (error) {
-        return { data: null, error: this.translateError(error.message) }
-      }
-
-      return { data, error: null }
-    } catch (error) {
-      return {
-        data: null,
-        error: `Erro ao remover passageiro da rota: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      }
-    }
-  }
-
-  /**
-   * Suspende passageiro (marca como Inativo)
-   */
-  async suspend(passengerId: string, reason?: string): Promise<CrudResponse<PassengerRow>> {
-    return this.update(passengerId, {
-      status: 'Inativo'
-    })
-  }
-
-  /**
-   * Reativa passageiro
-   */
-  async reactivate(passengerId: string): Promise<CrudResponse<PassengerRow>> {
-    return this.update(passengerId, {
-      status: 'Ativo'
-    })
-  }
-
-  /**
-   * Busca passageiros com filtros específicos
-   */
-  async findWithFilters(filters: PassengerFilters): Promise<CrudListResponse<PassengerRow>> {
-    const searchFilters: any = {}
-
-    if (filters.name) {
-      searchFilters.name = `%${filters.name}%`
-    }
-    if (filters.cpf) {
-      searchFilters.cpf = filters.cpf
-    }
-    if (filters.email) {
-      searchFilters.email = `%${filters.email}%`
-    }
-    if (filters.status) {
-      searchFilters.status = filters.status
-    }
-    if (filters.company_id) {
-      searchFilters.company_id = filters.company_id
-    }
-    if (filters.address) {
-      searchFilters.address = `%${filters.address}%`
-    }
-    if (filters.special_needs !== undefined) {
-      searchFilters.special_needs = filters.special_needs
-    }
-
-    return this.findAll({
-      filters: searchFilters,
-      sort: { column: 'name', ascending: true }
-    })
-  }
-
-  /**
-   * Obtém estatísticas dos passageiros
-   */
-  async getStats(): Promise<CrudResponse<{
-    total: number
-    active: number
-    inactive: number
-    withSpecialNeeds: number
-    byCompany: { [key: string]: number }
-    byStatus: { [key: string]: number }
-    withRoutes: number
-    withoutRoutes: number
-  }>> {
-    try {
-      const [
-        totalResult,
-        activeResult,
-        inactiveResult,
-        specialNeedsResult
-      ] = await Promise.all([
-        this.count(),
-        this.count({ status: 'Ativo' }),
-        this.count({ status: 'Inativo' }),
-        this.count({ special_needs: true })
-      ])
-
-      // Busca todos os passageiros para calcular estatísticas detalhadas
-      const allPassengers = await this.findAll()
-      
-      if (allPassengers.error) {
-        return { data: null, error: allPassengers.error }
-      }
-
-      const passengers = allPassengers.data
-
-      // Busca empresas para estatísticas
-      const { data: companies } = await this.client
-        .from('companies')
-        .select('id, name')
-
-      const companyMap = companies?.reduce((acc, company) => {
-        acc[company.id] = company.name
-        return acc
-      }, {} as { [key: string]: string }) || {}
-
-      const byCompany = passengers.reduce((acc, passenger) => {
-        const companyName = companyMap[passenger.company_id] || 'Sem empresa'
-        acc[companyName] = (acc[companyName] || 0) + 1
-        return acc
-      }, {} as { [key: string]: number })
-
-      const byStatus = passengers.reduce((acc, passenger) => {
-        acc[passenger.status] = (acc[passenger.status] || 0) + 1
-        return acc
-      }, {} as { [key: string]: number })
-
-      // Conta passageiros com e sem rotas
-      const { data: routePassengers } = await this.client
-        .from('route_passengers')
-        .select('passenger_id')
-
-      const passengersWithRoutes = new Set(routePassengers?.map(rp => rp.passenger_id) || [])
-      const withRoutes = passengersWithRoutes.size
-      const withoutRoutes = passengers.length - withRoutes
-
-      return {
-        data: {
-          total: totalResult.data || 0,
-          active: activeResult.data || 0,
-          inactive: inactiveResult.data || 0,
-          withSpecialNeeds: specialNeedsResult.data || 0,
-          byCompany,
-          byStatus,
-          withRoutes,
-          withoutRoutes,
-        },
-        error: null
-      }
-    } catch (error) {
-      return {
-        data: null,
-        error: `Erro ao obter estatísticas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      }
+        error: error.message || 'Erro ao atualizar passageiro'
+      };
     }
   }
 }
 
-// Instância singleton
-export const passengersService = new PassengersService()
+export const passengersService = new PassengersService();
+export default passengersService;

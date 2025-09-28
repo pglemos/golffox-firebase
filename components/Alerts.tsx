@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Info, X, RefreshCw, Filter } from 'lucide-react';
-import { MOCK_ALERTS } from '../constants';
-import type { Alert } from '../types';
-import { AlertType } from '../types';
+import { MOCK_ALERTS } from '../config/constants';
+import type { Alert } from '../config/types';
+import { AlertType } from '../config/types';
 import { useNotifications } from '../hooks/useNotifications';
 
 const Alerts: React.FC = () => {

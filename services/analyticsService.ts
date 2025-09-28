@@ -1,5 +1,18 @@
-import { supabase, supabaseAdmin } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc,
+  orderBy,
+  limit,
+  startAfter,
+  Timestamp,
+  QueryDocumentSnapshot,
+  DocumentData
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Interfaces para dados de análise
 export interface PerformanceMetrics {
@@ -48,94 +61,163 @@ export interface MonthlyTrends {
   customerGrowth: number;
 }
 
-export interface AlertData {
-  id: string;
-  type: 'warning' | 'error' | 'info';
-  title: string;
-  message: string;
-  timestamp: Date;
-  severity: 'low' | 'medium' | 'high';
+export interface DriverAnalytics {
+  driverId: string;
+  driverName: string;
+  totalDistance: number;
+  totalRoutes: number;
+  averageRating: number;
+  punctualityScore: number;
+  safetyScore: number;
+  fuelEfficiency: number;
+}
+
+export interface CompanyAnalytics {
+  companyId: string;
+  companyName: string;
+  totalVehicles: number;
+  activeVehicles: number;
+  totalDrivers: number;
+  activeDrivers: number;
+  totalRoutes: number;
+  totalDistance: number;
+  averageEfficiency: number;
+  monthlyRevenue: number;
+}
+
+export interface AlertAnalytics {
+  totalAlerts: number;
+  criticalAlerts: number;
+  resolvedAlerts: number;
+  averageResolutionTime: number;
+  alertsByType: Record<string, number>;
+  alertsByPriority: Record<string, number>;
+}
+
+export interface PassengerAnalytics {
+  totalPassengers: number;
+  activePassengers: number;
+  averageRating: number;
+  totalCheckIns: number;
+  punctualityRate: number;
+  specialNeedsPassengers: number;
+}
+
+export interface FinancialMetrics {
+  totalRevenue: number;
+  totalCosts: number;
+  profit: number;
+  profitMargin: number;
+  fuelCosts: number;
+  maintenanceCosts: number;
+  operationalCosts: number;
+}
+
+export interface AnalyticsFilters {
+  companyId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  vehicleIds?: string[];
+  driverIds?: string[];
+  routeIds?: string[];
+}
+
+export interface DashboardData {
+  performanceMetrics: PerformanceMetrics;
+  dailyMetrics: DailyMetrics[];
+  vehicleAnalytics: VehicleAnalytics[];
+  driverAnalytics: DriverAnalytics[];
+  alertAnalytics: AlertAnalytics;
+  passengerAnalytics: PassengerAnalytics;
+  financialMetrics: FinancialMetrics;
 }
 
 export class AnalyticsService {
-  private static instance: AnalyticsService;
-
-  public static getInstance(): AnalyticsService {
-    if (!AnalyticsService.instance) {
-      AnalyticsService.instance = new AnalyticsService();
-    }
-    return AnalyticsService.instance;
-  }
-
   /**
-   * Calcula distância entre dois pontos (fórmula de Haversine)
+   * Busca métricas de performance geral
    */
-  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371; // Raio da Terra em km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  }
-
-  /**
-   * Gera métricas de performance gerais baseadas em dados reais
-   */
-  async generatePerformanceMetrics(): Promise<PerformanceMetrics> {
+  async getPerformanceMetrics(filters: AnalyticsFilters): Promise<PerformanceMetrics> {
     try {
-      // Busca dados dos últimos 30 dias
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const metrics: PerformanceMetrics = {
+        totalDistance: 0,
+        totalTime: 0,
+        fuelConsumption: 0,
+        totalCost: 0,
+        averageSpeed: 0,
+        efficiency: 0
+      };
 
-      // Busca histórico de rotas
-      const { data: routeHistory, error: routeError } = await supabase
-        .from('route_history')
-        .select('*')
-        .gte('completed_at', thirtyDaysAgo.toISOString());
+      // Buscar dados de rotas
+      let routeQuery = collection(db, 'routes');
+      const routeConstraints = [];
 
-      if (routeError) throw routeError;
-
-      // Nota: Cálculo de distâncias simplificado sem tabela vehicle_locations
-
-      // Calcula métricas
-      let totalDistance = 0;
-      let totalTime = 0;
-      let totalRoutes = routeHistory?.length || 0;
-
-      // Estimativa simplificada de distância baseada no número de rotas
-      totalDistance = totalRoutes * 25; // Estimativa de 25km por rota
-
-      // Calcula tempo total baseado no histórico de rotas
-      if (routeHistory) {
-        totalTime = routeHistory.reduce((sum, route) => {
-          if (route.started_at && route.completed_at) {
-            const duration = new Date(route.completed_at).getTime() - new Date(route.started_at).getTime();
-            return sum + (duration / (1000 * 60 * 60)); // Converte para horas
-          }
-          return sum;
-        }, 0);
+      if (filters.companyId) {
+        routeConstraints.push(where('companyId', '==', filters.companyId));
       }
 
-      const fuelConsumption = totalDistance * 0.12; // 0.12L por km
-      const totalCost = fuelConsumption * 5.50; // R$ 5.50 por litro
-      const averageSpeed = totalTime > 0 ? totalDistance / totalTime : 0;
-      const efficiency = totalRoutes > 0 ? Math.min(100, (averageSpeed / 50) * 100) : 85;
+      if (routeConstraints.length > 0) {
+        const routeQueryRef = query(routeQuery, ...routeConstraints);
+        const routeSnapshot = await getDocs(routeQueryRef);
+        
+        let totalRoutes = 0;
+        let totalDuration = 0;
 
-      return {
-        totalDistance,
-        totalTime,
-        fuelConsumption,
-        totalCost,
-        averageSpeed,
-        efficiency: efficiency / 100
-      };
+        routeSnapshot.docs.forEach(doc => {
+          const route = doc.data();
+          
+          // Filtrar por data se especificado
+          if (filters.startDate || filters.endDate) {
+            const routeDate = route.createdAt?.toDate();
+            if (filters.startDate && routeDate < filters.startDate) return;
+            if (filters.endDate && routeDate > filters.endDate) return;
+          }
+
+          if (route.distance) metrics.totalDistance += route.distance;
+          if (route.estimatedDuration) totalDuration += route.estimatedDuration;
+          if (route.estimatedCost) metrics.totalCost += route.estimatedCost;
+          totalRoutes++;
+        });
+
+        metrics.totalTime = totalDuration;
+        metrics.averageSpeed = metrics.totalTime > 0 ? metrics.totalDistance / (metrics.totalTime / 60) : 0;
+      }
+
+      // Buscar dados de performance de veículos
+      if (filters.companyId) {
+        const vehicleQuery = query(
+          collection(db, 'vehiclePerformance'),
+          where('companyId', '==', filters.companyId)
+        );
+        
+        const vehicleSnapshot = await getDocs(vehicleQuery);
+        let totalFuelConsumption = 0;
+        let performanceCount = 0;
+
+        vehicleSnapshot.docs.forEach(doc => {
+          const performance = doc.data();
+          
+          // Filtrar por data se especificado
+          if (filters.startDate || filters.endDate) {
+            const perfDate = performance.date?.toDate();
+            if (filters.startDate && perfDate < filters.startDate) return;
+            if (filters.endDate && perfDate > filters.endDate) return;
+          }
+
+          if (performance.fuelConsumption) {
+            totalFuelConsumption += performance.fuelConsumption;
+            performanceCount++;
+          }
+        });
+
+        metrics.fuelConsumption = performanceCount > 0 ? totalFuelConsumption / performanceCount : 0;
+      }
+
+      // Calcular eficiência
+      metrics.efficiency = metrics.fuelConsumption > 0 ? metrics.totalDistance / metrics.fuelConsumption : 0;
+
+      return metrics;
     } catch (error) {
-      console.error('Erro ao gerar métricas de performance:', error);
-      // Retorna dados padrão em caso de erro
+      console.error('Erro ao buscar métricas de performance:', error);
       return {
         totalDistance: 0,
         totalTime: 0,
@@ -148,96 +230,137 @@ export class AnalyticsService {
   }
 
   /**
-   * Gera dados de análise de rotas dos últimos 7 dias
+   * Busca métricas diárias
    */
-  async generateRouteAnalytics(): Promise<RouteAnalytics[]> {
+  async getDailyMetrics(filters: AnalyticsFilters): Promise<DailyMetrics[]> {
     try {
-      const data: RouteAnalytics[] = [];
-      const today = new Date();
+      const dailyMetrics: DailyMetrics[] = [];
+      
+      if (!filters.companyId) return dailyMetrics;
 
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+      // Buscar rotas por dia
+      const routeQuery = query(
+        collection(db, 'routes'),
+        where('companyId', '==', filters.companyId),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const routeSnapshot = await getDocs(routeQuery);
+      const routesByDate: Record<string, any[]> = {};
 
-        const nextDate = new Date(date);
-        nextDate.setDate(nextDate.getDate() + 1);
-
-        // Busca rotas do dia
-        const { data: routes, error } = await supabase
-          .from('routes')
-          .select('*')
-          .gte('created_at', date.toISOString())
-          .lt('created_at', nextDate.toISOString());
-
-        if (error) throw error;
-
-        // Busca histórico de rotas completadas do dia
-        const { data: completedRoutes, error: historyError } = await supabase
-          .from('route_history')
-          .select('*')
-          .gte('completed_at', date.toISOString())
-          .lt('completed_at', nextDate.toISOString());
-
-        if (historyError) throw historyError;
-
-        const routesOptimized = routes?.length || 0;
+      routeSnapshot.docs.forEach(doc => {
+        const route = doc.data();
+        const routeDate = route.createdAt?.toDate();
         
-        // Calcula economias baseadas nas rotas completadas
-        let distanceSaved = 0;
-        let timeSaved = 0;
-        
-        if (completedRoutes) {
-          distanceSaved = completedRoutes.length * 15; // Estimativa de 15km economizados por rota
-          timeSaved = completedRoutes.length * 20; // Estimativa de 20min economizados por rota
+        if (routeDate) {
+          // Filtrar por data se especificado
+          if (filters.startDate && routeDate < filters.startDate) return;
+          if (filters.endDate && routeDate > filters.endDate) return;
+
+          const dateKey = routeDate.toISOString().split('T')[0];
+          if (!routesByDate[dateKey]) {
+            routesByDate[dateKey] = [];
+          }
+          routesByDate[dateKey].push(route);
         }
+      });
 
-        data.push({
-          date: dateStr,
-          routesOptimized,
-          distanceSaved,
-          timeSaved,
-          fuelSaved: distanceSaved * 0.12, // 0.12L por km
-          costSaved: distanceSaved * 0.12 * 5.50 // Custo do combustível
+      // Buscar veículos ativos por dia
+      const vehicleQuery = query(
+        collection(db, 'vehicles'),
+        where('companyId', '==', filters.companyId),
+        where('status', '==', 'in_use')
+      );
+      
+      const vehicleSnapshot = await getDocs(vehicleQuery);
+      const activeVehicles = vehicleSnapshot.size;
+
+      // Processar métricas por dia
+      for (const [date, routes] of Object.entries(routesByDate)) {
+        const totalRoutes = routes.length;
+        const averageDeliveryTime = routes.reduce((sum, route) => {
+          return sum + (route.actualDuration || route.estimatedDuration || 0);
+        }, 0) / totalRoutes;
+
+        const operationalCost = routes.reduce((sum, route) => {
+          return sum + (route.actualCost || route.estimatedCost || 0);
+        }, 0);
+
+        dailyMetrics.push({
+          date,
+          activeVehicles,
+          totalRoutes,
+          averageDeliveryTime,
+          customerSatisfaction: 4.5, // Valor padrão - pode ser calculado com base em avaliações
+          operationalCost
         });
       }
 
-      return data;
+      return dailyMetrics.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (error) {
-      console.error('Erro ao gerar análise de rotas:', error);
+      console.error('Erro ao buscar métricas diárias:', error);
       return [];
     }
   }
 
   /**
-   * Gera análise por veículo
+   * Busca análise de veículos
    */
-  async generateVehicleAnalytics(): Promise<VehicleAnalytics[]> {
+  async getVehicleAnalytics(filters: AnalyticsFilters): Promise<VehicleAnalytics[]> {
     try {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select('*');
+      const vehicleAnalytics: VehicleAnalytics[] = [];
+      
+      if (!filters.companyId) return vehicleAnalytics;
 
-      if (error) throw error;
+      // Buscar veículos da empresa
+      const vehicleQuery = query(
+        collection(db, 'vehicles'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const vehicleSnapshot = await getDocs(vehicleQuery);
 
-      const analytics: VehicleAnalytics[] = [];
+      for (const vehicleDoc of vehicleSnapshot.docs) {
+        const vehicle = vehicleDoc.data();
+        
+        // Buscar performance do veículo
+        const performanceQuery = query(
+          collection(db, 'vehiclePerformance'),
+          where('vehicleId', '==', vehicleDoc.id)
+        );
+        
+        const performanceSnapshot = await getDocs(performanceQuery);
+        
+        let totalDistance = 0;
+        let totalTime = 0;
+        let totalFuelConsumption = 0;
+        let totalUtilization = 0;
+        let performanceCount = 0;
 
-      for (const vehicle of vehicles || []) {
-        // Busca localizações dos últimos 30 dias
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        performanceSnapshot.docs.forEach(doc => {
+          const performance = doc.data();
+          
+          // Filtrar por data se especificado
+          if (filters.startDate || filters.endDate) {
+            const perfDate = performance.date?.toDate();
+            if (filters.startDate && perfDate < filters.startDate) return;
+            if (filters.endDate && perfDate > filters.endDate) return;
+          }
 
-        // Métricas simplificadas sem tabela vehicle_locations
-        const totalDistance = Math.random() * 500 + 100; // 100-600 km
-        const totalTime = Math.random() * 50 + 10; // 10-60 horas
-        const averageSpeed = 45; // km/h médio
-        const fuelEfficiency = 8; // km/L
-        const maintenanceScore = Math.random() * 0.3 + 0.7; // Score entre 0.7 e 1.0
-        const utilizationRate = Math.min(1, totalTime / (24 * 30)); // Baseado em 30 dias
+          totalDistance += performance.totalDistance || 0;
+          totalTime += performance.totalTime || 0;
+          totalFuelConsumption += performance.fuelConsumption || 0;
+          totalUtilization += performance.utilizationRate || 0;
+          performanceCount++;
+        });
 
-        analytics.push({
-          vehicleId: vehicle.id,
-          vehicleName: `${vehicle.model} - ${vehicle.plate}`,
+        const fuelEfficiency = totalFuelConsumption > 0 ? totalDistance / totalFuelConsumption : 0;
+        const utilizationRate = performanceCount > 0 ? totalUtilization / performanceCount : 0;
+        const maintenanceScore = this.calculateMaintenanceScore(vehicle);
+
+        vehicleAnalytics.push({
+          vehicleId: vehicleDoc.id,
+          vehicleName: `${vehicle.brand} ${vehicle.model} - ${vehicle.plate}`,
           totalDistance,
           totalTime,
           fuelEfficiency,
@@ -246,336 +369,512 @@ export class AnalyticsService {
         });
       }
 
+      return vehicleAnalytics.sort((a, b) => b.totalDistance - a.totalDistance);
+    } catch (error) {
+      console.error('Erro ao buscar análise de veículos:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca análise de motoristas
+   */
+  async getDriverAnalytics(filters: AnalyticsFilters): Promise<DriverAnalytics[]> {
+    try {
+      const driverAnalytics: DriverAnalytics[] = [];
+      
+      if (!filters.companyId) return driverAnalytics;
+
+      // Buscar motoristas da empresa
+      const driverQuery = query(
+        collection(db, 'drivers'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const driverSnapshot = await getDocs(driverQuery);
+
+      for (const driverDoc of driverSnapshot.docs) {
+        const driver = driverDoc.data();
+        
+        // Buscar performance do motorista
+        const performanceQuery = query(
+          collection(db, 'driverPerformance'),
+          where('driverId', '==', driverDoc.id)
+        );
+        
+        const performanceSnapshot = await getDocs(performanceQuery);
+        
+        let totalDistance = 0;
+        let totalRoutes = 0;
+        let totalRating = 0;
+        let totalPunctuality = 0;
+        let totalSafety = 0;
+        let totalFuelEfficiency = 0;
+        let performanceCount = 0;
+
+        performanceSnapshot.docs.forEach(doc => {
+          const performance = doc.data();
+          
+          // Filtrar por data se especificado
+          if (filters.startDate || filters.endDate) {
+            const perfDate = performance.date?.toDate();
+            if (filters.startDate && perfDate < filters.startDate) return;
+            if (filters.endDate && perfDate > filters.endDate) return;
+          }
+
+          totalDistance += performance.totalDistance || 0;
+          totalRoutes += performance.routesCompleted || 0;
+          totalRating += performance.customerRating || 0;
+          totalPunctuality += performance.punctualityScore || 0;
+          totalSafety += performance.safetyScore || 0;
+          
+          // Calcular eficiência de combustível
+          if (performance.totalDistance && performance.fuelConsumption) {
+            totalFuelEfficiency += performance.totalDistance / performance.fuelConsumption;
+          }
+          
+          performanceCount++;
+        });
+
+        const averageRating = performanceCount > 0 ? totalRating / performanceCount : 0;
+        const punctualityScore = performanceCount > 0 ? totalPunctuality / performanceCount : 0;
+        const safetyScore = performanceCount > 0 ? totalSafety / performanceCount : 0;
+        const fuelEfficiency = performanceCount > 0 ? totalFuelEfficiency / performanceCount : 0;
+
+        driverAnalytics.push({
+          driverId: driverDoc.id,
+          driverName: driver.name,
+          totalDistance,
+          totalRoutes,
+          averageRating,
+          punctualityScore,
+          safetyScore,
+          fuelEfficiency
+        });
+      }
+
+      return driverAnalytics.sort((a, b) => b.totalDistance - a.totalDistance);
+    } catch (error) {
+      console.error('Erro ao buscar análise de motoristas:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca análise de alertas
+   */
+  async getAlertAnalytics(filters: AnalyticsFilters): Promise<AlertAnalytics> {
+    try {
+      const analytics: AlertAnalytics = {
+        totalAlerts: 0,
+        criticalAlerts: 0,
+        resolvedAlerts: 0,
+        averageResolutionTime: 0,
+        alertsByType: {},
+        alertsByPriority: {}
+      };
+
+      if (!filters.companyId) return analytics;
+
+      // Buscar alertas da empresa
+      const alertQuery = query(
+        collection(db, 'alerts'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const alertSnapshot = await getDocs(alertQuery);
+      
+      let totalResolutionTime = 0;
+      let resolvedCount = 0;
+
+      alertSnapshot.docs.forEach(doc => {
+        const alert = doc.data();
+        
+        // Filtrar por data se especificado
+        if (filters.startDate || filters.endDate) {
+          const alertDate = alert.createdAt?.toDate();
+          if (filters.startDate && alertDate < filters.startDate) return;
+          if (filters.endDate && alertDate > filters.endDate) return;
+        }
+
+        analytics.totalAlerts++;
+
+        // Contar por tipo
+        const type = alert.type || 'unknown';
+        analytics.alertsByType[type] = (analytics.alertsByType[type] || 0) + 1;
+
+        // Contar por prioridade
+        const priority = alert.priority || 'medium';
+        analytics.alertsByPriority[priority] = (analytics.alertsByPriority[priority] || 0) + 1;
+
+        // Contar críticos
+        if (priority === 'critical' || priority === 'high') {
+          analytics.criticalAlerts++;
+        }
+
+        // Contar resolvidos e calcular tempo de resolução
+        if (alert.status === 'resolved' && alert.resolvedAt) {
+          analytics.resolvedAlerts++;
+          const resolutionTime = alert.resolvedAt.toDate().getTime() - alert.createdAt.toDate().getTime();
+          totalResolutionTime += resolutionTime;
+          resolvedCount++;
+        }
+      });
+
+      // Calcular tempo médio de resolução em horas
+      analytics.averageResolutionTime = resolvedCount > 0 
+        ? totalResolutionTime / resolvedCount / (1000 * 60 * 60)
+        : 0;
+
       return analytics;
     } catch (error) {
-      console.error('Erro ao gerar análise de veículos:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Gera métricas diárias dos últimos 30 dias
-   */
-  async generateDailyMetrics(): Promise<DailyMetrics[]> {
-    try {
-      const data: DailyMetrics[] = [];
-      const today = new Date();
-
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-
-        const nextDate = new Date(date);
-        nextDate.setDate(nextDate.getDate() + 1);
-
-        // Busca veículos ativos no dia
-        const { data: vehicles, error: vehicleError } = await supabase
-          .from('vehicles')
-          .select('*')
-          .eq('status', 'active');
-
-        // Busca rotas do dia
-        const { data: routes, error: routeError } = await supabase
-          .from('routes')
-          .select('*')
-          .gte('created_at', date.toISOString())
-          .lt('created_at', nextDate.toISOString());
-
-        // Busca histórico de rotas completadas
-        const { data: completedRoutes, error: historyError } = await supabase
-          .from('route_history')
-          .select('*')
-          .gte('completed_at', date.toISOString())
-          .lt('completed_at', nextDate.toISOString());
-
-        const activeVehicles = vehicles?.length || 0;
-        const totalRoutes = routes?.length || 0;
-        
-        // Calcula tempo médio de entrega
-        let averageDeliveryTime = 45; // Padrão
-        if (completedRoutes && completedRoutes.length > 0) {
-          const totalDeliveryTime = completedRoutes.reduce((sum, route) => {
-            if (route.started_at && route.completed_at) {
-              const duration = new Date(route.completed_at).getTime() - new Date(route.started_at).getTime();
-              return sum + (duration / (1000 * 60)); // Converte para minutos
-            }
-            return sum;
-          }, 0);
-          
-          averageDeliveryTime = totalDeliveryTime / completedRoutes.length;
-        }
-
-        data.push({
-          date: dateStr,
-          activeVehicles,
-          totalRoutes,
-          averageDeliveryTime,
-          customerSatisfaction: 4.2 + Math.random() * 0.6, // Simulado entre 4.2 e 4.8
-          operationalCost: totalRoutes * 50 + Math.random() * 200 // Estimativa de custo
-        });
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Erro ao gerar métricas diárias:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Gera tendências mensais dos últimos 12 meses
-   */
-  async generateMonthlyTrends(): Promise<MonthlyTrends[]> {
-    try {
-      const data: MonthlyTrends[] = [];
-      const today = new Date();
-      const months = [
-        'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-        'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-      ];
-
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(today);
-        date.setMonth(date.getMonth() - i);
-        
-        const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-        const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-        // Busca dados do mês
-        const { data: routes, error } = await supabase
-          .from('routes')
-          .select('*')
-          .gte('created_at', startOfMonth.toISOString())
-          .lte('created_at', endOfMonth.toISOString());
-
-        const { data: costControl, error: costError } = await supabase
-          .from('cost_control')
-          .select('*')
-          .gte('date', startOfMonth.toISOString())
-          .lte('date', endOfMonth.toISOString());
-
-        const routeCount = routes?.length || 0;
-        const revenue = routeCount * 150 + Math.random() * 5000; // Estimativa de receita
-        const costs = costControl?.reduce((sum, cost) => sum + (cost.total_cost || 0), 0) || (routeCount * 80);
-        
-        data.push({
-          month: months[date.getMonth()],
-          revenue,
-          costs,
-          profit: revenue - costs,
-          efficiency: 0.75 + Math.random() * 0.2,
-          customerGrowth: -5 + Math.random() * 15
-        });
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Erro ao gerar tendências mensais:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Gera alertas baseados em dados reais
-   */
-  async generateAlerts(): Promise<AlertData[]> {
-    try {
-      const alerts: AlertData[] = [];
-
-      // Busca alertas do banco de dados
-      const { data: dbAlerts, error } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('is_read', false)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-
-      // Converte alertas do banco para o formato esperado
-      if (dbAlerts) {
-        for (const alert of dbAlerts) {
-          alerts.push({
-            id: alert.id,
-            type: alert.type as 'warning' | 'error' | 'info',
-            title: alert.title,
-            message: alert.message,
-            timestamp: new Date(alert.created_at),
-            severity: alert.severity as 'low' | 'medium' | 'high'
-          });
-        }
-      }
-
-      // Adiciona alertas baseados em análise de dados
-      const vehicles = await supabase.from('vehicles').select('*').eq('status', 'emergency');
-      if (vehicles.data && vehicles.data.length > 0) {
-        alerts.push({
-          id: `emergency_${Date.now()}`,
-          type: 'error',
-          title: 'Veículos em Emergência',
-          message: `${vehicles.data.length} veículo(s) em situação de emergência`,
-          timestamp: new Date(),
-          severity: 'high'
-        });
-      }
-
-      return alerts;
-    } catch (error) {
-      console.error('Erro ao gerar alertas:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Calcula KPIs principais
-   */
-  async calculateKPIs(): Promise<Record<string, { value: number; change: number; trend: 'up' | 'down' | 'stable' }>> {
-    try {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      const lastWeek = new Date(today);
-      lastWeek.setDate(lastWeek.getDate() - 7);
-
-      // Busca dados de hoje e ontem para comparação
-      const { data: todayRoutes } = await supabase
-        .from('routes')
-        .select('*')
-        .gte('created_at', today.toISOString().split('T')[0]);
-
-      const { data: yesterdayRoutes } = await supabase
-        .from('routes')
-        .select('*')
-        .gte('created_at', yesterday.toISOString().split('T')[0])
-        .lt('created_at', today.toISOString().split('T')[0]);
-
-      const { data: activeVehicles } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('status', 'active');
-
-      const todayCount = todayRoutes?.length || 0;
-      const yesterdayCount = yesterdayRoutes?.length || 0;
-      const vehicleCount = activeVehicles?.length || 0;
-
-      const routeChange = yesterdayCount > 0 ? ((todayCount - yesterdayCount) / yesterdayCount) * 100 : 0;
-
+      console.error('Erro ao buscar análise de alertas:', error);
       return {
-        totalRoutes: {
-          value: todayCount,
-          change: routeChange,
-          trend: routeChange > 0 ? 'up' : routeChange < 0 ? 'down' : 'stable'
-        },
-        activeVehicles: {
-          value: vehicleCount,
-          change: 0, // Seria necessário histórico para calcular
-          trend: 'stable'
-        },
-        efficiency: {
-          value: 85.5,
-          change: 2.3,
-          trend: 'up'
-        },
-        satisfaction: {
-          value: 4.6,
-          change: 0.1,
-          trend: 'up'
-        }
+        totalAlerts: 0,
+        criticalAlerts: 0,
+        resolvedAlerts: 0,
+        averageResolutionTime: 0,
+        alertsByType: {},
+        alertsByPriority: {}
       };
-    } catch (error) {
-      console.error('Erro ao calcular KPIs:', error);
-      return {};
     }
   }
 
   /**
-   * Carrega todos os dados de análise
+   * Busca análise de passageiros
    */
-  async loadAnalyticsData(): Promise<{
-    performance: PerformanceMetrics;
-    routeAnalytics: RouteAnalytics[];
-    vehicleAnalytics: VehicleAnalytics[];
-    dailyMetrics: DailyMetrics[];
-    monthlyTrends: MonthlyTrends[];
-    alerts: AlertData[];
-    kpis: Record<string, { value: number; change: number; trend: 'up' | 'down' | 'stable' }>;
-  }> {
+  async getPassengerAnalytics(filters: AnalyticsFilters): Promise<PassengerAnalytics> {
+    try {
+      const analytics: PassengerAnalytics = {
+        totalPassengers: 0,
+        activePassengers: 0,
+        averageRating: 0,
+        totalCheckIns: 0,
+        punctualityRate: 0,
+        specialNeedsPassengers: 0
+      };
+
+      if (!filters.companyId) return analytics;
+
+      // Buscar passageiros da empresa
+      const passengerQuery = query(
+        collection(db, 'passengers'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const passengerSnapshot = await getDocs(passengerQuery);
+      
+      let totalRating = 0;
+      let ratingCount = 0;
+      let punctualCheckIns = 0;
+      let totalCheckIns = 0;
+
+      passengerSnapshot.docs.forEach(doc => {
+        const passenger = doc.data();
+        
+        analytics.totalPassengers++;
+
+        if (passenger.status === 'active') {
+          analytics.activePassengers++;
+        }
+
+        if (passenger.specialNeeds && passenger.specialNeeds.length > 0) {
+          analytics.specialNeedsPassengers++;
+        }
+
+        // Calcular rating médio (se disponível)
+        if (passenger.rating) {
+          totalRating += passenger.rating;
+          ratingCount++;
+        }
+      });
+
+      // Buscar dados de check-ins
+      const checkInQuery = query(
+        collection(db, 'passengerCheckIns'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const checkInSnapshot = await getDocs(checkInQuery);
+      
+      checkInSnapshot.docs.forEach(doc => {
+        const checkIn = doc.data();
+        
+        // Filtrar por data se especificado
+        if (filters.startDate || filters.endDate) {
+          const checkInDate = checkIn.timestamp?.toDate();
+          if (filters.startDate && checkInDate < filters.startDate) return;
+          if (filters.endDate && checkInDate > filters.endDate) return;
+        }
+
+        totalCheckIns++;
+
+        // Verificar pontualidade (se chegou no horário esperado)
+        if (checkIn.onTime) {
+          punctualCheckIns++;
+        }
+      });
+
+      analytics.averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+      analytics.totalCheckIns = totalCheckIns;
+      analytics.punctualityRate = totalCheckIns > 0 ? (punctualCheckIns / totalCheckIns) * 100 : 0;
+
+      return analytics;
+    } catch (error) {
+      console.error('Erro ao buscar análise de passageiros:', error);
+      return {
+        totalPassengers: 0,
+        activePassengers: 0,
+        averageRating: 0,
+        totalCheckIns: 0,
+        punctualityRate: 0,
+        specialNeedsPassengers: 0
+      };
+    }
+  }
+
+  /**
+   * Busca métricas financeiras
+   */
+  async getFinancialMetrics(filters: AnalyticsFilters): Promise<FinancialMetrics> {
+    try {
+      const metrics: FinancialMetrics = {
+        totalRevenue: 0,
+        totalCosts: 0,
+        profit: 0,
+        profitMargin: 0,
+        fuelCosts: 0,
+        maintenanceCosts: 0,
+        operationalCosts: 0
+      };
+
+      if (!filters.companyId) return metrics;
+
+      // Buscar dados financeiros de rotas
+      const routeQuery = query(
+        collection(db, 'routes'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const routeSnapshot = await getDocs(routeQuery);
+      
+      routeSnapshot.docs.forEach(doc => {
+        const route = doc.data();
+        
+        // Filtrar por data se especificado
+        if (filters.startDate || filters.endDate) {
+          const routeDate = route.createdAt?.toDate();
+          if (filters.startDate && routeDate < filters.startDate) return;
+          if (filters.endDate && routeDate > filters.endDate) return;
+        }
+
+        if (route.revenue) metrics.totalRevenue += route.revenue;
+        if (route.actualCost || route.estimatedCost) {
+          metrics.operationalCosts += route.actualCost || route.estimatedCost;
+        }
+      });
+
+      // Buscar custos de combustível
+      const fuelQuery = query(
+        collection(db, 'fuelExpenses'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const fuelSnapshot = await getDocs(fuelQuery);
+      
+      fuelSnapshot.docs.forEach(doc => {
+        const expense = doc.data();
+        
+        // Filtrar por data se especificado
+        if (filters.startDate || filters.endDate) {
+          const expenseDate = expense.date?.toDate();
+          if (filters.startDate && expenseDate < filters.startDate) return;
+          if (filters.endDate && expenseDate > filters.endDate) return;
+        }
+
+        if (expense.amount) metrics.fuelCosts += expense.amount;
+      });
+
+      // Buscar custos de manutenção
+      const maintenanceQuery = query(
+        collection(db, 'maintenanceExpenses'),
+        where('companyId', '==', filters.companyId)
+      );
+      
+      const maintenanceSnapshot = await getDocs(maintenanceQuery);
+      
+      maintenanceSnapshot.docs.forEach(doc => {
+        const expense = doc.data();
+        
+        // Filtrar por data se especificado
+        if (filters.startDate || filters.endDate) {
+          const expenseDate = expense.date?.toDate();
+          if (filters.startDate && expenseDate < filters.startDate) return;
+          if (filters.endDate && expenseDate > filters.endDate) return;
+        }
+
+        if (expense.amount) metrics.maintenanceCosts += expense.amount;
+      });
+
+      // Calcular totais
+      metrics.totalCosts = metrics.fuelCosts + metrics.maintenanceCosts + metrics.operationalCosts;
+      metrics.profit = metrics.totalRevenue - metrics.totalCosts;
+      metrics.profitMargin = metrics.totalRevenue > 0 ? (metrics.profit / metrics.totalRevenue) * 100 : 0;
+
+      return metrics;
+    } catch (error) {
+      console.error('Erro ao buscar métricas financeiras:', error);
+      return {
+        totalRevenue: 0,
+        totalCosts: 0,
+        profit: 0,
+        profitMargin: 0,
+        fuelCosts: 0,
+        maintenanceCosts: 0,
+        operationalCosts: 0
+      };
+    }
+  }
+
+  /**
+   * Busca dados completos do dashboard
+   */
+  async getDashboardData(filters: AnalyticsFilters): Promise<DashboardData> {
     try {
       const [
-        performance,
-        routeAnalytics,
-        vehicleAnalytics,
+        performanceMetrics,
         dailyMetrics,
-        monthlyTrends,
-        alerts,
-        kpis
+        vehicleAnalytics,
+        driverAnalytics,
+        alertAnalytics,
+        passengerAnalytics,
+        financialMetrics
       ] = await Promise.all([
-        this.generatePerformanceMetrics(),
-        this.generateRouteAnalytics(),
-        this.generateVehicleAnalytics(),
-        this.generateDailyMetrics(),
-        this.generateMonthlyTrends(),
-        this.generateAlerts(),
-        this.calculateKPIs()
+        this.getPerformanceMetrics(filters),
+        this.getDailyMetrics(filters),
+        this.getVehicleAnalytics(filters),
+        this.getDriverAnalytics(filters),
+        this.getAlertAnalytics(filters),
+        this.getPassengerAnalytics(filters),
+        this.getFinancialMetrics(filters)
       ]);
 
       return {
-        performance,
-        routeAnalytics,
-        vehicleAnalytics,
+        performanceMetrics,
         dailyMetrics,
-        monthlyTrends,
-        alerts,
-        kpis
+        vehicleAnalytics,
+        driverAnalytics,
+        alertAnalytics,
+        passengerAnalytics,
+        financialMetrics
       };
     } catch (error) {
-      console.error('Erro ao carregar dados de análise:', error);
+      console.error('Erro ao buscar dados do dashboard:', error);
       throw error;
     }
   }
 
   /**
-   * Cria um novo alerta no banco de dados
+   * Busca tendências mensais
    */
-  async createAlert(alert: Omit<AlertData, 'id' | 'timestamp'>): Promise<void> {
+  async getMonthlyTrends(filters: AnalyticsFilters): Promise<MonthlyTrends[]> {
     try {
-      const { error } = await supabase
-        .from('alerts')
-        .insert({
-          type: alert.type,
-          title: alert.title,
-          message: alert.message,
-          severity: alert.severity,
-          user_id: null, // Será definido baseado no contexto
-          is_read: false
+      const trends: MonthlyTrends[] = [];
+      
+      if (!filters.companyId) return trends;
+
+      // Buscar dados dos últimos 12 meses
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 12);
+
+      const monthlyData: Record<string, any> = {};
+
+      // Buscar dados financeiros por mês
+      const routeQuery = query(
+        collection(db, 'routes'),
+        where('companyId', '==', filters.companyId),
+        where('createdAt', '>=', Timestamp.fromDate(startDate)),
+        where('createdAt', '<=', Timestamp.fromDate(endDate))
+      );
+      
+      const routeSnapshot = await getDocs(routeQuery);
+      
+      routeSnapshot.docs.forEach(doc => {
+        const route = doc.data();
+        const routeDate = route.createdAt?.toDate();
+        
+        if (routeDate) {
+          const monthKey = `${routeDate.getFullYear()}-${String(routeDate.getMonth() + 1).padStart(2, '0')}`;
+          
+          if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = {
+              revenue: 0,
+              costs: 0,
+              routes: 0,
+              distance: 0
+            };
+          }
+
+          monthlyData[monthKey].revenue += route.revenue || 0;
+          monthlyData[monthKey].costs += route.actualCost || route.estimatedCost || 0;
+          monthlyData[monthKey].routes++;
+          monthlyData[monthKey].distance += route.distance || 0;
+        }
+      });
+
+      // Converter para array e calcular métricas
+      for (const [month, data] of Object.entries(monthlyData)) {
+        const profit = data.revenue - data.costs;
+        const efficiency = data.distance > 0 ? data.revenue / data.distance : 0;
+
+        trends.push({
+          month,
+          revenue: data.revenue,
+          costs: data.costs,
+          profit,
+          efficiency,
+          customerGrowth: 0 // Pode ser calculado comparando com mês anterior
         });
+      }
 
-      if (error) throw error;
+      return trends.sort((a, b) => a.month.localeCompare(b.month));
     } catch (error) {
-      console.error('Erro ao criar alerta:', error);
-      throw error;
+      console.error('Erro ao buscar tendências mensais:', error);
+      return [];
     }
   }
 
-  /**
-   * Marca um alerta como lido
-   */
-  async markAlertAsRead(alertId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('alerts')
-        .update({ is_read: true })
-        .eq('id', alertId);
+  // Métodos auxiliares privados
 
-      if (error) throw error;
-    } catch (error) {
-      console.error('Erro ao marcar alerta como lido:', error);
-      throw error;
+  private calculateMaintenanceScore(vehicle: any): number {
+    // Calcular score de manutenção baseado em vários fatores
+    let score = 100;
+
+    // Reduzir score baseado na idade do veículo
+    const currentYear = new Date().getFullYear();
+    const vehicleAge = currentYear - (vehicle.year || currentYear);
+    score -= vehicleAge * 2;
+
+    // Reduzir score baseado na quilometragem
+    if (vehicle.kilometers) {
+      const kmPenalty = Math.floor(vehicle.kilometers / 10000) * 5;
+      score -= kmPenalty;
     }
+
+    // Reduzir score se manutenção está atrasada
+    if (vehicle.nextMaintenanceDate) {
+      const nextMaintenance = new Date(vehicle.nextMaintenanceDate);
+      const now = new Date();
+      if (nextMaintenance < now) {
+        const daysOverdue = Math.floor((now.getTime() - nextMaintenance.getTime()) / (1000 * 60 * 60 * 24));
+        score -= daysOverdue * 2;
+      }
+    }
+
+    return Math.max(0, Math.min(100, score));
   }
 }
 
-// Instância singleton
-export const analyticsService = AnalyticsService.getInstance();
+export const analyticsService = new AnalyticsService();
+export default analyticsService;

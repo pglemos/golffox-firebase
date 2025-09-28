@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouteOptimization } from '../hooks/useRouteOptimization';
 import { RouteOptimizationOptions, Coordinates } from '../services/mockRouteOptimizationService';
-import type { Passenger } from '../types';
+import type { Passenger } from '../config/types';
 import {
   Route,
   MapPin,

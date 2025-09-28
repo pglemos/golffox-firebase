@@ -1,4 +1,4 @@
-// File: C:\Users\Pedro\Documents\golffox\app\layout.tsx
+// File: C:\Users\Pedro\Documents\golffox - firebase\app\layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

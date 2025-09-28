@@ -3,7 +3,7 @@ import ClientDashboard from '../components/client/ClientDashboard';
 import ClientSidebar from '../components/client/ClientSidebar';
 import EmployeesManagement from '../components/client/EmployeesManagement';
 import ClientLoginScreen from '../components/client/ClientLoginScreen';
-import type { ClientView, Employee, Company, PermissionProfile } from '../types';
+import type { ClientView, Employee, Company, PermissionProfile } from '../config/types';
 
 interface ClientPortalProps {
     employees: Employee[];

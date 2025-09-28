@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import '../index.css'
+import '../styles/index.css'
+import '../styles/globals.css'
 import { AppProvider } from './providers'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata: Metadata = {
   title: 'Golffox Management Panel',
@@ -60,7 +60,6 @@ export default function RootLayout({
         <AppProvider>
           {children}
         </AppProvider>
-        <SpeedInsights />
       </body>
     </html>
   )

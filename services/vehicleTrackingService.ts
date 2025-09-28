@@ -1,13 +1,26 @@
-import { supabase, supabaseAdmin } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
-
-// Tipos baseados no schema do Supabase
-export type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
-export type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
-export type VehicleUpdate = Database['public']['Tables']['vehicles']['Update'];
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  orderBy,
+  limit,
+  startAfter,
+  Timestamp,
+  onSnapshot,
+  QueryDocumentSnapshot,
+  DocumentData,
+  writeBatch,
+  GeoPoint
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Interfaces para compatibilidade com o código existente
-// Usando campos de posição da tabela vehicles
 export interface VehicleLocation {
   id: string;
   vehicleId: string;
@@ -17,6 +30,7 @@ export interface VehicleLocation {
   speed: number;
   heading: number;
   accuracy: number;
+  companyId: string;
 }
 
 export interface Vehicle {
@@ -29,6 +43,9 @@ export interface Vehicle {
   currentPassengers: number;
   routeId?: string;
   lastLocation?: VehicleLocation;
+  companyId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface TrackingEvent {
@@ -37,6 +54,7 @@ export interface TrackingEvent {
   type: 'location_update' | 'status_change' | 'emergency' | 'route_start' | 'route_end';
   data: any;
   timestamp: Date;
+  companyId: string;
 }
 
 export interface VehicleMetrics {
@@ -45,158 +63,232 @@ export interface VehicleMetrics {
   fuelConsumption: number;
   uptime: number;
   efficiency: number;
+  lastUpdated: Date;
+}
+
+export interface VehicleFilters {
+  companyId?: string;
+  status?: string;
+  routeId?: string;
+  driverId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  searchTerm?: string;
+}
+
+export interface LocationUpdate {
+  vehicleId: string;
+  lat: number;
+  lng: number;
+  speed: number;
+  heading: number;
+  accuracy: number;
+  timestamp?: Date;
+  companyId: string;
+}
+
+export interface VehicleStatistics {
+  totalVehicles: number;
+  activeVehicles: number;
+  inactiveVehicles: number;
+  maintenanceVehicles: number;
+  emergencyVehicles: number;
+  averageSpeed: number;
+  totalDistance: number;
+  averageUptime: number;
+}
+
+export interface GeofenceArea {
+  id: string;
+  name: string;
+  center: { lat: number; lng: number };
+  radius: number; // em metros
+  type: 'pickup' | 'dropoff' | 'restricted' | 'maintenance';
+  companyId: string;
+  isActive: boolean;
+}
+
+export interface GeofenceEvent {
+  id: string;
+  vehicleId: string;
+  geofenceId: string;
+  type: 'enter' | 'exit';
+  timestamp: Date;
+  location: { lat: number; lng: number };
+  companyId: string;
 }
 
 export class VehicleTrackingService {
-  private trackingIntervals: Map<string, NodeJS.Timeout> = new Map();
-  private eventListeners: Map<string, (event: TrackingEvent) => void> = new Map();
+  private locationListeners: Map<string, () => void> = new Map();
 
   /**
-   * Converte dados do Supabase para o formato esperado pela aplicação
+   * Busca veículos com filtros
    */
-  private convertVehicleFromDB(dbVehicle: VehicleRow): Vehicle {
-    return {
-      id: dbVehicle.id,
-      plate: dbVehicle.plate,
-      model: dbVehicle.model,
-      driver: dbVehicle.driver_id || 'Não atribuído',
-      status: dbVehicle.status as Vehicle['status'],
-      capacity: 0, // Campo não existe na tabela
-      currentPassengers: 0, // Campo não existe na tabela
-      routeId: dbVehicle.route_id || undefined,
-      lastLocation: (dbVehicle.position_lat && dbVehicle.position_lng) ? {
-        id: dbVehicle.id,
-        vehicleId: dbVehicle.id,
-        lat: dbVehicle.position_lat,
-        lng: dbVehicle.position_lng,
-        timestamp: new Date(dbVehicle.updated_at),
-        speed: 0,
-        heading: 0,
-        accuracy: 0
-      } : undefined
-    };
-  }
-
-
-
-  /**
-   * Obtém todos os veículos com suas últimas localizações
-   */
-  async getVehicles(): Promise<Vehicle[]> {
+  async findVehicles(filters: VehicleFilters = {}): Promise<Vehicle[]> {
     try {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const vehicleCollection = collection(db, 'vehicles');
+      const constraints = [];
 
-      if (error) throw error;
-
-      return vehicles.map(vehicle => {
-        return this.convertVehicleFromDB(vehicle);
-      });
-    } catch (error) {
-      console.error('Erro ao buscar veículos:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtém veículo por ID
-   */
-  async getVehicle(vehicleId: string): Promise<Vehicle | null> {
-    try {
-      const { data: vehicle, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('id', vehicleId)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null; // Não encontrado
-        throw error;
+      if (filters.companyId) {
+        constraints.push(where('companyId', '==', filters.companyId));
       }
 
-      return this.convertVehicleFromDB(vehicle);
+      if (filters.status) {
+        constraints.push(where('status', '==', filters.status));
+      }
+
+      if (filters.routeId) {
+        constraints.push(where('routeId', '==', filters.routeId));
+      }
+
+      if (filters.driverId) {
+        constraints.push(where('driverId', '==', filters.driverId));
+      }
+
+      constraints.push(orderBy('createdAt', 'desc'));
+
+      const vehicleQuery = constraints.length > 0 
+        ? query(vehicleCollection, ...constraints)
+        : vehicleCollection;
+
+      const snapshot = await getDocs(vehicleQuery);
+      const vehicles: Vehicle[] = [];
+
+      for (const docSnapshot of snapshot.docs) {
+        const vehicleData = docSnapshot.data();
+        
+        // Filtrar por data se especificado
+        if (filters.startDate || filters.endDate) {
+          const vehicleDate = vehicleData.createdAt?.toDate();
+          if (filters.startDate && vehicleDate < filters.startDate) continue;
+          if (filters.endDate && vehicleDate > filters.endDate) continue;
+        }
+
+        // Filtrar por termo de busca
+        if (filters.searchTerm) {
+          const searchLower = filters.searchTerm.toLowerCase();
+          if (!vehicleData.plate?.toLowerCase().includes(searchLower) &&
+              !vehicleData.model?.toLowerCase().includes(searchLower) &&
+              !vehicleData.driver?.toLowerCase().includes(searchLower)) {
+            continue;
+          }
+        }
+
+        // Buscar última localização
+        const lastLocation = await this.getVehicleLastLocation(docSnapshot.id);
+
+        vehicles.push({
+          id: docSnapshot.id,
+          plate: vehicleData.plate,
+          model: vehicleData.model,
+          driver: vehicleData.driver,
+          status: vehicleData.status,
+          capacity: vehicleData.capacity,
+          currentPassengers: vehicleData.currentPassengers || 0,
+          routeId: vehicleData.routeId,
+          lastLocation,
+          companyId: vehicleData.companyId,
+          createdAt: vehicleData.createdAt?.toDate() || new Date(),
+          updatedAt: vehicleData.updatedAt?.toDate() || new Date()
+        });
+      }
+
+      return vehicles;
     } catch (error) {
-      console.error('Erro ao buscar veículo:', error);
-      throw error;
+      console.error('Erro ao buscar veículos:', error);
+      return [];
     }
   }
 
   /**
-   * Obtém histórico de localizações de um veículo
-   * Nota: Simplificado para usar apenas a tabela vehicles
+   * Busca veículo por ID
    */
-  async getVehicleLocationHistory(vehicleId: string, limit: number = 50): Promise<VehicleLocation[]> {
+  async findVehicleById(id: string): Promise<Vehicle | null> {
     try {
-      const vehicle = await this.getVehicle(vehicleId);
-      if (!vehicle || !vehicle.lastLocation) return [];
+      const docRef = doc(db, 'vehicles', id);
+      const docSnap = await getDoc(docRef);
 
-      // Retorna apenas a localização atual do veículo
-      return [{
-        id: vehicle.id,
-        vehicleId: vehicle.id,
-        lat: vehicle.lastLocation.lat,
-        lng: vehicle.lastLocation.lng,
-        timestamp: vehicle.lastLocation.timestamp,
-        speed: 0,
-        heading: 0,
-        accuracy: 0
-      }];
-    } catch (error) {
-      console.error('Erro ao buscar histórico de localizações:', error);
-      throw error;
-    }
-  }
+      if (!docSnap.exists()) {
+        return null;
+      }
 
-  /**
-   * Obtém localização atual de um veículo
-   */
-  async getCurrentLocation(vehicleId: string): Promise<VehicleLocation | null> {
-    try {
-      const vehicle = await this.getVehicle(vehicleId);
-      if (!vehicle || !vehicle.lastLocation) return null;
+      const vehicleData = docSnap.data();
+      const lastLocation = await this.getVehicleLastLocation(id);
 
       return {
-        id: vehicle.id,
-        vehicleId: vehicle.id,
-        lat: vehicle.lastLocation.lat,
-        lng: vehicle.lastLocation.lng,
-        timestamp: vehicle.lastLocation.timestamp,
-        speed: 0,
-        heading: 0,
-        accuracy: 0
+        id: docSnap.id,
+        plate: vehicleData.plate,
+        model: vehicleData.model,
+        driver: vehicleData.driver,
+        status: vehicleData.status,
+        capacity: vehicleData.capacity,
+        currentPassengers: vehicleData.currentPassengers || 0,
+        routeId: vehicleData.routeId,
+        lastLocation,
+        companyId: vehicleData.companyId,
+        createdAt: vehicleData.createdAt?.toDate() || new Date(),
+        updatedAt: vehicleData.updatedAt?.toDate() || new Date()
       };
     } catch (error) {
-      console.error('Erro ao buscar localização atual:', error);
-      throw error;
+      console.error('Erro ao buscar veículo por ID:', error);
+      return null;
     }
   }
 
   /**
-   * Atualiza localização de um veículo
+   * Atualiza localização do veículo
    */
-  async updateVehicleLocation(vehicleId: string, location: Omit<VehicleLocation, 'id' | 'vehicleId' | 'timestamp'>): Promise<void> {
+  async updateVehicleLocation(locationUpdate: LocationUpdate): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('vehicles')
-        .update({
-          position_lat: location.lat,
-          position_lng: location.lng,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', vehicleId);
+      const batch = writeBatch(db);
 
-      if (error) throw error;
-
-      // Emite evento de atualização de localização
-      this.emitEvent({
-        id: `location_${Date.now()}`,
-        vehicleId,
-        type: 'location_update',
-        data: location,
-        timestamp: new Date()
+      // Criar registro de localização
+      const locationRef = doc(collection(db, 'vehicleLocations'));
+      batch.set(locationRef, {
+        vehicleId: locationUpdate.vehicleId,
+        position: new GeoPoint(locationUpdate.lat, locationUpdate.lng),
+        lat: locationUpdate.lat,
+        lng: locationUpdate.lng,
+        speed: locationUpdate.speed,
+        heading: locationUpdate.heading,
+        accuracy: locationUpdate.accuracy,
+        timestamp: locationUpdate.timestamp ? Timestamp.fromDate(locationUpdate.timestamp) : Timestamp.now(),
+        companyId: locationUpdate.companyId,
+        createdAt: Timestamp.now()
       });
+
+      // Atualizar última localização no veículo
+      const vehicleRef = doc(db, 'vehicles', locationUpdate.vehicleId);
+      batch.update(vehicleRef, {
+        lastLocationUpdate: Timestamp.now(),
+        lastLat: locationUpdate.lat,
+        lastLng: locationUpdate.lng,
+        lastSpeed: locationUpdate.speed,
+        lastHeading: locationUpdate.heading,
+        updatedAt: Timestamp.now()
+      });
+
+      // Criar evento de tracking
+      const eventRef = doc(collection(db, 'trackingEvents'));
+      batch.set(eventRef, {
+        vehicleId: locationUpdate.vehicleId,
+        type: 'location_update',
+        data: {
+          lat: locationUpdate.lat,
+          lng: locationUpdate.lng,
+          speed: locationUpdate.speed,
+          heading: locationUpdate.heading,
+          accuracy: locationUpdate.accuracy
+        },
+        timestamp: Timestamp.now(),
+        companyId: locationUpdate.companyId,
+        createdAt: Timestamp.now()
+      });
+
+      await batch.commit();
+
+      // Verificar geofences
+      await this.checkGeofences(locationUpdate);
     } catch (error) {
       console.error('Erro ao atualizar localização do veículo:', error);
       throw error;
@@ -204,40 +296,172 @@ export class VehicleTrackingService {
   }
 
   /**
-   * Atualiza status de um veículo
+   * Busca última localização do veículo
    */
-  async updateVehicleStatus(vehicleId: string, status: Vehicle['status']): Promise<void> {
+  async getVehicleLastLocation(vehicleId: string): Promise<VehicleLocation | undefined> {
     try {
-      const { data: vehicle, error: fetchError } = await supabase
-        .from('vehicles')
-        .select('status')
-        .eq('id', vehicleId)
-        .single();
+      const locationQuery = query(
+        collection(db, 'vehicleLocations'),
+        where('vehicleId', '==', vehicleId),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
 
-      if (fetchError) throw fetchError;
-
-      const oldStatus = vehicle.status;
-
-      const { error } = await supabase
-        .from('vehicles')
-        .update({ status })
-        .eq('id', vehicleId);
-
-      if (error) throw error;
-
-      // Para rastreamento se veículo ficar inativo
-      if (status !== 'active') {
-        this.stopTracking(vehicleId);
+      const snapshot = await getDocs(locationQuery);
+      
+      if (snapshot.empty) {
+        return undefined;
       }
 
-      // Emite evento de mudança de status
-      this.emitEvent({
-        id: `status_${Date.now()}`,
+      const locationDoc = snapshot.docs[0];
+      const locationData = locationDoc.data();
+
+      return {
+        id: locationDoc.id,
+        vehicleId: locationData.vehicleId,
+        lat: locationData.lat,
+        lng: locationData.lng,
+        timestamp: locationData.timestamp?.toDate() || new Date(),
+        speed: locationData.speed,
+        heading: locationData.heading,
+        accuracy: locationData.accuracy,
+        companyId: locationData.companyId
+      };
+    } catch (error) {
+      console.error('Erro ao buscar última localização:', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Busca histórico de localizações
+   */
+  async getVehicleLocationHistory(
+    vehicleId: string, 
+    startDate: Date, 
+    endDate: Date,
+    limitCount: number = 100
+  ): Promise<VehicleLocation[]> {
+    try {
+      const locationQuery = query(
+        collection(db, 'vehicleLocations'),
+        where('vehicleId', '==', vehicleId),
+        where('timestamp', '>=', Timestamp.fromDate(startDate)),
+        where('timestamp', '<=', Timestamp.fromDate(endDate)),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
+      );
+
+      const snapshot = await getDocs(locationQuery);
+      const locations: VehicleLocation[] = [];
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        locations.push({
+          id: doc.id,
+          vehicleId: data.vehicleId,
+          lat: data.lat,
+          lng: data.lng,
+          timestamp: data.timestamp?.toDate() || new Date(),
+          speed: data.speed,
+          heading: data.heading,
+          accuracy: data.accuracy,
+          companyId: data.companyId
+        });
+      });
+
+      return locations;
+    } catch (error) {
+      console.error('Erro ao buscar histórico de localizações:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Inicia monitoramento em tempo real de um veículo
+   */
+  startVehicleTracking(vehicleId: string, callback: (location: VehicleLocation) => void): () => void {
+    try {
+      const locationQuery = query(
+        collection(db, 'vehicleLocations'),
+        where('vehicleId', '==', vehicleId),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+
+      const unsubscribe = onSnapshot(locationQuery, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            const location: VehicleLocation = {
+              id: change.doc.id,
+              vehicleId: data.vehicleId,
+              lat: data.lat,
+              lng: data.lng,
+              timestamp: data.timestamp?.toDate() || new Date(),
+              speed: data.speed,
+              heading: data.heading,
+              accuracy: data.accuracy,
+              companyId: data.companyId
+            };
+            callback(location);
+          }
+        });
+      });
+
+      this.locationListeners.set(vehicleId, unsubscribe);
+      return unsubscribe;
+    } catch (error) {
+      console.error('Erro ao iniciar tracking do veículo:', error);
+      return () => {};
+    }
+  }
+
+  /**
+   * Para monitoramento de um veículo
+   */
+  stopVehicleTracking(vehicleId: string): void {
+    const unsubscribe = this.locationListeners.get(vehicleId);
+    if (unsubscribe) {
+      unsubscribe();
+      this.locationListeners.delete(vehicleId);
+    }
+  }
+
+  /**
+   * Para todos os monitoramentos
+   */
+  stopAllTracking(): void {
+    this.locationListeners.forEach(unsubscribe => unsubscribe());
+    this.locationListeners.clear();
+  }
+
+  /**
+   * Atualiza status do veículo
+   */
+  async updateVehicleStatus(vehicleId: string, status: Vehicle['status'], companyId: string): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+
+      // Atualizar status do veículo
+      const vehicleRef = doc(db, 'vehicles', vehicleId);
+      batch.update(vehicleRef, {
+        status,
+        updatedAt: Timestamp.now()
+      });
+
+      // Criar evento de tracking
+      const eventRef = doc(collection(db, 'trackingEvents'));
+      batch.set(eventRef, {
         vehicleId,
         type: 'status_change',
-        data: { oldStatus, newStatus: status },
-        timestamp: new Date()
+        data: { status },
+        timestamp: Timestamp.now(),
+        companyId,
+        createdAt: Timestamp.now()
       });
+
+      await batch.commit();
     } catch (error) {
       console.error('Erro ao atualizar status do veículo:', error);
       throw error;
@@ -245,187 +469,11 @@ export class VehicleTrackingService {
   }
 
   /**
-   * Inicia rastreamento de um veículo (simulação)
+   * Busca métricas do veículo
    */
-  startTracking(vehicleId: string): void {
-    if (this.trackingIntervals.has(vehicleId)) {
-      return; // Já está sendo rastreado
-    }
-
-    // Simula atualizações de localização a cada 30 segundos
-    const interval = setInterval(async () => {
-      try {
-        const vehicle = await this.getVehicle(vehicleId);
-        if (!vehicle || vehicle.status !== 'active') {
-          this.stopTracking(vehicleId);
-          return;
-        }
-
-        // Simula movimento do veículo
-        const lastLocation = vehicle.lastLocation;
-        if (lastLocation) {
-          const newLocation = {
-            lat: lastLocation.lat + (Math.random() - 0.5) * 0.001,
-            lng: lastLocation.lng + (Math.random() - 0.5) * 0.001,
-            speed: 20 + Math.random() * 40,
-            heading: Math.random() * 360,
-            accuracy: 5 + Math.random() * 10
-          };
-
-          await this.updateVehicleLocation(vehicleId, newLocation);
-        }
-      } catch (error) {
-        console.error(`Erro no rastreamento do veículo ${vehicleId}:`, error);
-      }
-    }, 30000);
-
-    this.trackingIntervals.set(vehicleId, interval);
-
-    // Emite evento de início de rastreamento
-    this.emitEvent({
-      id: `tracking_start_${Date.now()}`,
-      vehicleId,
-      type: 'route_start',
-      data: { tracking: true },
-      timestamp: new Date()
-    });
-  }
-
-  /**
-   * Para rastreamento de um veículo
-   */
-  stopTracking(vehicleId: string): void {
-    const interval = this.trackingIntervals.get(vehicleId);
-    if (interval) {
-      clearInterval(interval);
-      this.trackingIntervals.delete(vehicleId);
-
-      // Emite evento de fim de rastreamento
-      this.emitEvent({
-        id: `tracking_stop_${Date.now()}`,
-        vehicleId,
-        type: 'route_end',
-        data: { tracking: false },
-        timestamp: new Date()
-      });
-    }
-  }
-
-  /**
-   * Para todos os rastreamentos
-   */
-  stopAllTracking(): void {
-    this.trackingIntervals.forEach((interval, vehicleId) => {
-      clearInterval(interval);
-      this.emitEvent({
-        id: `tracking_stop_all_${Date.now()}`,
-        vehicleId,
-        type: 'route_end',
-        data: { tracking: false },
-        timestamp: new Date()
-      });
-    });
-    this.trackingIntervals.clear();
-  }
-
-  /**
-   * Adiciona listener para eventos de rastreamento
-   */
-  addEventListener(id: string, callback: (event: TrackingEvent) => void): void {
-    this.eventListeners.set(id, callback);
-  }
-
-  /**
-   * Remove listener de eventos
-   */
-  removeEventListener(id: string): void {
-    this.eventListeners.delete(id);
-  }
-
-  /**
-   * Emite evento para todos os listeners
-   */
-  private emitEvent(event: TrackingEvent): void {
-    this.eventListeners.forEach(callback => {
-      try {
-        callback(event);
-      } catch (error) {
-        console.error('Erro ao emitir evento de rastreamento:', error);
-      }
-    });
-  }
-
-  /**
-   * Simula emergência em um veículo
-   */
-  async simulateEmergency(vehicleId: string, emergencyType: string = 'breakdown'): Promise<void> {
+  async getVehicleMetrics(vehicleId: string, startDate: Date, endDate: Date): Promise<VehicleMetrics> {
     try {
-      await this.updateVehicleStatus(vehicleId, 'emergency');
-      
-      const vehicle = await this.getVehicle(vehicleId);
-      
-      this.emitEvent({
-        id: `emergency_${Date.now()}`,
-        vehicleId,
-        type: 'emergency',
-        data: { 
-          type: emergencyType,
-          location: vehicle?.lastLocation,
-          passengers: vehicle?.currentPassengers || 0
-        },
-        timestamp: new Date()
-      });
-    } catch (error) {
-      console.error('Erro ao simular emergência:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Calcula distância entre dois pontos (fórmula de Haversine)
-   */
-  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371; // Raio da Terra em km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  }
-
-  /**
-   * Obtém veículos próximos a uma localização
-   */
-  async getNearbyVehicles(lat: number, lng: number, radiusKm: number = 5): Promise<Vehicle[]> {
-    try {
-      const vehicles = await this.getVehicles();
-      
-      return vehicles.filter(vehicle => {
-        if (!vehicle.lastLocation || vehicle.status !== 'active') return false;
-        
-        const distance = this.calculateDistance(
-          lat, lng,
-          vehicle.lastLocation.lat, vehicle.lastLocation.lng
-        );
-        
-        return distance <= radiusKm;
-      });
-    } catch (error) {
-      console.error('Erro ao buscar veículos próximos:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtém métricas de um veículo
-   */
-  async getVehicleMetrics(vehicleId: string): Promise<VehicleMetrics> {
-    try {
-      // Busca histórico de localizações para calcular métricas
-      const locations = await this.getVehicleLocationHistory(vehicleId, 100);
+      const locations = await this.getVehicleLocationHistory(vehicleId, startDate, endDate, 1000);
       
       if (locations.length === 0) {
         return {
@@ -433,42 +481,341 @@ export class VehicleTrackingService {
           averageSpeed: 0,
           fuelConsumption: 0,
           uptime: 0,
-          efficiency: 0
+          efficiency: 0,
+          lastUpdated: new Date()
         };
       }
 
-      // Calcula distância total
+      // Calcular distância total
       let totalDistance = 0;
       let totalSpeed = 0;
-      
+      let validSpeedReadings = 0;
+
       for (let i = 1; i < locations.length; i++) {
+        const prev = locations[i];
+        const curr = locations[i - 1];
+        
+        // Calcular distância usando fórmula de Haversine
         const distance = this.calculateDistance(
-          locations[i-1].lat, locations[i-1].lng,
-          locations[i].lat, locations[i].lng
+          prev.lat, prev.lng,
+          curr.lat, curr.lng
         );
+        
         totalDistance += distance;
-        totalSpeed += locations[i].speed;
+        
+        if (curr.speed > 0) {
+          totalSpeed += curr.speed;
+          validSpeedReadings++;
+        }
       }
 
-      const averageSpeed = locations.length > 1 ? totalSpeed / (locations.length - 1) : 0;
-      const fuelConsumption = totalDistance * 0.12; // 0.12L por km
-      const uptime = locations.length > 1 ? 
-        (locations[0].timestamp.getTime() - locations[locations.length - 1].timestamp.getTime()) / (1000 * 60 * 60) : 0;
-      const efficiency = averageSpeed > 0 ? Math.min(100, (averageSpeed / 50) * 100) : 0;
+      const averageSpeed = validSpeedReadings > 0 ? totalSpeed / validSpeedReadings : 0;
+      
+      // Calcular uptime (tempo entre primeira e última localização)
+      const firstLocation = locations[locations.length - 1];
+      const lastLocation = locations[0];
+      const uptime = (lastLocation.timestamp.getTime() - firstLocation.timestamp.getTime()) / (1000 * 60 * 60); // em horas
+
+      // Estimativa de consumo de combustível (baseado na distância e eficiência média)
+      const fuelConsumption = totalDistance * 0.08; // 8L/100km estimado
+
+      // Calcular eficiência (km/h por litro)
+      const efficiency = fuelConsumption > 0 ? averageSpeed / fuelConsumption : 0;
 
       return {
         totalDistance,
         averageSpeed,
         fuelConsumption,
         uptime,
-        efficiency
+        efficiency,
+        lastUpdated: new Date()
       };
     } catch (error) {
       console.error('Erro ao calcular métricas do veículo:', error);
+      return {
+        totalDistance: 0,
+        averageSpeed: 0,
+        fuelConsumption: 0,
+        uptime: 0,
+        efficiency: 0,
+        lastUpdated: new Date()
+      };
+    }
+  }
+
+  /**
+   * Busca estatísticas de veículos
+   */
+  async getVehicleStatistics(companyId: string): Promise<VehicleStatistics> {
+    try {
+      const vehicleQuery = query(
+        collection(db, 'vehicles'),
+        where('companyId', '==', companyId)
+      );
+
+      const snapshot = await getDocs(vehicleQuery);
+      
+      let totalVehicles = 0;
+      let activeVehicles = 0;
+      let inactiveVehicles = 0;
+      let maintenanceVehicles = 0;
+      let emergencyVehicles = 0;
+      let totalSpeed = 0;
+      let totalDistance = 0;
+      let totalUptime = 0;
+      let validReadings = 0;
+
+      for (const vehicleDoc of snapshot.docs) {
+        const vehicle = vehicleDoc.data();
+        totalVehicles++;
+
+        switch (vehicle.status) {
+          case 'active':
+            activeVehicles++;
+            break;
+          case 'inactive':
+            inactiveVehicles++;
+            break;
+          case 'maintenance':
+            maintenanceVehicles++;
+            break;
+          case 'emergency':
+            emergencyVehicles++;
+            break;
+        }
+
+        // Calcular métricas dos últimos 7 dias
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        try {
+          const metrics = await this.getVehicleMetrics(vehicleDoc.id, startDate, endDate);
+          if (metrics.averageSpeed > 0) {
+            totalSpeed += metrics.averageSpeed;
+            totalDistance += metrics.totalDistance;
+            totalUptime += metrics.uptime;
+            validReadings++;
+          }
+        } catch (error) {
+          // Ignorar erros individuais de métricas
+        }
+      }
+
+      const averageSpeed = validReadings > 0 ? totalSpeed / validReadings : 0;
+      const averageUptime = validReadings > 0 ? totalUptime / validReadings : 0;
+
+      return {
+        totalVehicles,
+        activeVehicles,
+        inactiveVehicles,
+        maintenanceVehicles,
+        emergencyVehicles,
+        averageSpeed,
+        totalDistance,
+        averageUptime
+      };
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas de veículos:', error);
+      return {
+        totalVehicles: 0,
+        activeVehicles: 0,
+        inactiveVehicles: 0,
+        maintenanceVehicles: 0,
+        emergencyVehicles: 0,
+        averageSpeed: 0,
+        totalDistance: 0,
+        averageUptime: 0
+      };
+    }
+  }
+
+  /**
+   * Busca eventos de tracking
+   */
+  async getTrackingEvents(
+    vehicleId: string, 
+    startDate: Date, 
+    endDate: Date,
+    eventType?: TrackingEvent['type']
+  ): Promise<TrackingEvent[]> {
+    try {
+      let eventQuery = query(
+        collection(db, 'trackingEvents'),
+        where('vehicleId', '==', vehicleId),
+        where('timestamp', '>=', Timestamp.fromDate(startDate)),
+        where('timestamp', '<=', Timestamp.fromDate(endDate)),
+        orderBy('timestamp', 'desc')
+      );
+
+      if (eventType) {
+        eventQuery = query(
+          collection(db, 'trackingEvents'),
+          where('vehicleId', '==', vehicleId),
+          where('type', '==', eventType),
+          where('timestamp', '>=', Timestamp.fromDate(startDate)),
+          where('timestamp', '<=', Timestamp.fromDate(endDate)),
+          orderBy('timestamp', 'desc')
+        );
+      }
+
+      const snapshot = await getDocs(eventQuery);
+      const events: TrackingEvent[] = [];
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        events.push({
+          id: doc.id,
+          vehicleId: data.vehicleId,
+          type: data.type,
+          data: data.data,
+          timestamp: data.timestamp?.toDate() || new Date(),
+          companyId: data.companyId
+        });
+      });
+
+      return events;
+    } catch (error) {
+      console.error('Erro ao buscar eventos de tracking:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Cria alerta de emergência
+   */
+  async createEmergencyAlert(vehicleId: string, location: { lat: number; lng: number }, companyId: string): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+
+      // Atualizar status do veículo
+      const vehicleRef = doc(db, 'vehicles', vehicleId);
+      batch.update(vehicleRef, {
+        status: 'emergency',
+        updatedAt: Timestamp.now()
+      });
+
+      // Criar evento de emergência
+      const eventRef = doc(collection(db, 'trackingEvents'));
+      batch.set(eventRef, {
+        vehicleId,
+        type: 'emergency',
+        data: { location },
+        timestamp: Timestamp.now(),
+        companyId,
+        createdAt: Timestamp.now()
+      });
+
+      // Criar alerta
+      const alertRef = doc(collection(db, 'alerts'));
+      batch.set(alertRef, {
+        type: 'emergency',
+        title: 'Emergência de Veículo',
+        message: `Veículo ${vehicleId} acionou alerta de emergência`,
+        vehicleId,
+        location,
+        severity: 'critical',
+        status: 'unread',
+        companyId,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Erro ao criar alerta de emergência:', error);
       throw error;
     }
   }
+
+  /**
+   * Verifica geofences
+   */
+  private async checkGeofences(locationUpdate: LocationUpdate): Promise<void> {
+    try {
+      const geofencesQuery = query(
+        collection(db, 'geofences'),
+        where('companyId', '==', locationUpdate.companyId),
+        where('isActive', '==', true)
+      );
+
+      const snapshot = await getDocs(geofencesQuery);
+      
+      for (const geofenceDoc of snapshot.docs) {
+        const geofence = geofenceDoc.data() as GeofenceArea;
+        
+        const distance = this.calculateDistance(
+          locationUpdate.lat, locationUpdate.lng,
+          geofence.center.lat, geofence.center.lng
+        );
+
+        const isInside = distance <= geofence.radius;
+        
+        // Verificar se houve entrada ou saída da geofence
+        // (implementação simplificada - em produção seria necessário manter estado anterior)
+        if (isInside) {
+          await this.createGeofenceEvent(
+            locationUpdate.vehicleId,
+            geofenceDoc.id,
+            'enter',
+            { lat: locationUpdate.lat, lng: locationUpdate.lng },
+            locationUpdate.companyId
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar geofences:', error);
+    }
+  }
+
+  /**
+   * Cria evento de geofence
+   */
+  private async createGeofenceEvent(
+    vehicleId: string,
+    geofenceId: string,
+    type: 'enter' | 'exit',
+    location: { lat: number; lng: number },
+    companyId: string
+  ): Promise<void> {
+    try {
+      await addDoc(collection(db, 'geofenceEvents'), {
+        vehicleId,
+        geofenceId,
+        type,
+        location,
+        timestamp: Timestamp.now(),
+        companyId,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      console.error('Erro ao criar evento de geofence:', error);
+    }
+  }
+
+  /**
+   * Calcula distância entre dois pontos (fórmula de Haversine)
+   */
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000; // Raio da Terra em metros
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+    
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    
+    return R * c;
+  }
+
+  /**
+   * Converte graus para radianos
+   */
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
 }
 
-// Instância singleton
 export const vehicleTrackingService = new VehicleTrackingService();
+export default vehicleTrackingService;

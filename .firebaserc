@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "golffox-app",
+    "out": "golffox-app"
+  }
+}

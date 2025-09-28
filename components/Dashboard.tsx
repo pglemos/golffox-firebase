@@ -22,8 +22,8 @@ import { ThemeToggleIcon } from './ThemeToggle';
 import VehicleTracker from './VehicleTracker';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { UserSettings } from './UserSettings';
-import { MOCK_ROUTES, MOCK_VEHICLES, MOCK_ALERTS } from '../constants';
-import { AlertType } from '../types';
+import { MOCK_ROUTES, MOCK_VEHICLES, MOCK_ALERTS } from '../config/constants';
+import { AlertType } from '../config/types';
 
 interface InfoCardProps {
   title: string;

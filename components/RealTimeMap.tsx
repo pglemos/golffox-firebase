@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MOCK_VEHICLES, MOCK_ROUTES } from '../constants';
-import type { Vehicle, Route, Passenger } from '../types';
-import { VehicleStatus } from '../types';
+import { MOCK_VEHICLES, MOCK_ROUTES } from '../config/constants';
+import type { Vehicle, Route, Passenger } from '../config/types';
+import { VehicleStatus } from '../config/types';
 import { TruckIcon, XMarkIcon, ClockIcon, UsersIcon } from './icons/Icons';
 import MapApiKeyWarning from './MapApiKeyWarning';
 import BusIcon3D, { BusStatus } from './BusIcon3D';
@@ -147,7 +147,7 @@ const RealTimeMap: React.FC = () => {
 
 
 
-  const displayGarageBuses = () => {
+  const displayGarageBuses = useCallback(() => {
     if (!mapInstanceRef.current) return;
 
     // Posição da garagem (centro aproximado da cidade)
@@ -198,7 +198,7 @@ const RealTimeMap: React.FC = () => {
 
       markersRef.current.push(garageMarker);
     });
-  };
+  }, [createTrackedInfoWindow]);
 
   const cleanupResources = useCallback(() => {
     debugLog('🧹 Iniciando limpeza de recursos');
@@ -372,7 +372,7 @@ const RealTimeMap: React.FC = () => {
         }
       });
     }, 100);
-  }, [selectedVehicle, mapStatus.status, cleanupResources, createTrackedInfoWindow]);
+  }, [mapStatus.status, cleanupResources, createTrackedInfoWindow]);
 
   const startSimulation = (directionsResult: any, route: Route, vehicle: Vehicle) => {
     const overviewPath = directionsResult.routes[0].overview_path;
@@ -462,7 +462,7 @@ const RealTimeMap: React.FC = () => {
 
     // Exibir ônibus na garagem
         displayGarageBuses();
-  }, [mapStatus.status]);
+  }, [mapStatus.status, handleVehicleSelect, displayGarageBuses]);
   
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

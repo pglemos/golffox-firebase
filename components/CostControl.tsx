@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { CostControl } from '../types';
+import type { CostControl } from '../config/types';
 import { CurrencyDollarIcon, ChartBarIcon, TruckIcon, MapIcon, ClockIcon } from './icons/Icons';
 
 // Mock data para demonstração

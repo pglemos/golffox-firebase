@@ -1,4 +1,4 @@
-import type { Passenger, Company } from '../types';
+import type { Passenger, Company } from '../config/types';
 
 export interface OptimizedRoute {
     waypoints: google.maps.LatLng[];

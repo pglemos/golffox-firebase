@@ -1,9 +1,161 @@
-/*!*******************************************************************************************************************************************************************************************************************************************************!*\
-  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!./index.css ***!
-  \*******************************************************************************************************************************************************************************************************************************************************/
-/* Theme Variables */
+/*!**************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!./styles/index.css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************/
+/* Sistema de Design Unificado Golffox - CSS Variables */
 :root {
-  /* Light Theme */
+  /* Cores Primárias da Marca */
+  --golffox-orange: #FF5F00;
+  --golffox-orange-light: #FF7A26;
+  --golffox-orange-dark: #E54A00;
+  --golffox-orange-hover: #FF6B0D;
+  
+  --golffox-blue-navy: #002D56;
+  --golffox-blue-navy-light: #003A6B;
+  --golffox-blue-navy-dark: #001F3F;
+  --golffox-blue-light: #004A8D;
+  --golffox-blue-light-hover: #0056A3;
+  
+  /* Cores Neutras */
+  --golffox-white: #FFFFFF;
+  --golffox-gray-50: #F9FAFB;
+  --golffox-gray-100: #F3F4F6;
+  --golffox-gray-200: #E5E7EB;
+  --golffox-gray-300: #D1D5DB;
+  --golffox-gray-400: #9CA3AF;
+  --golffox-gray-500: #6B7280;
+  --golffox-gray-600: #4B5563;
+  --golffox-gray-700: #374151;
+  --golffox-gray-800: #1F2937;
+  --golffox-gray-900: #111827;
+  --golffox-gray-dark: #2C3E50;
+  --golffox-gray-medium: #7F8C8D;
+  --golffox-gray-light: #F4F4F4;
+  
+  /* Cores de Status */
+  --golffox-success: #10B981;
+  --golffox-success-light: #34D399;
+  --golffox-success-dark: #059669;
+  --golffox-warning: #F59E0B;
+  --golffox-warning-light: #FBBF24;
+  --golffox-warning-dark: #D97706;
+  --golffox-error: #EF4444;
+  --golffox-error-light: #F87171;
+  --golffox-error-dark: #DC2626;
+  --golffox-info: #3B82F6;
+  --golffox-info-light: #60A5FA;
+  --golffox-info-dark: #2563EB;
+  
+  /* Cores de Fundo */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F9FAFB;
+  --bg-tertiary: #F3F4F6;
+  --bg-dark: #1F2937;
+  --bg-dark-secondary: #374151;
+  
+  /* Cores de Texto */
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-tertiary: #9CA3AF;
+  --text-inverse: #FFFFFF;
+  --text-link: #3B82F6;
+  --text-link-hover: #2563EB;
+  
+  /* Cores de Borda */
+  --border-light: #E5E7EB;
+  --border-medium: #D1D5DB;
+  --border-dark: #9CA3AF;
+  --border-focus: #3B82F6;
+  
+  /* Tipografia */
+  --font-family-primary: 'Roboto', system-ui, -apple-system, sans-serif;
+  --font-family-mono: 'JetBrains Mono', Monaco, Consolas, monospace;
+  
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  --font-size-5xl: 3rem;
+  
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  
+  /* Espaçamentos */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+  --spacing-32: 8rem;
+  
+  /* Raios de Borda */
+  --radius-sm: 0.125rem;
+  --radius-base: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  
+  /* Transições */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+  
+  /* Z-index */
+  --z-hide: -1;
+  --z-base: 0;
+  --z-docked: 10;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-banner: 1030;
+  --z-overlay: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-skip-link: 1070;
+  --z-toast: 1080;
+  --z-tooltip: 1090;
+  
+  /* Componentes */
+  --button-height-sm: 2rem;
+  --button-height-md: 2.5rem;
+  --button-height-lg: 3rem;
+  --button-height-xl: 3.5rem;
+  
+  --input-height-sm: 2rem;
+  --input-height-md: 2.5rem;
+  --input-height-lg: 3rem;
+  
+  --sidebar-width: 16rem;
+  --sidebar-width-collapsed: 4rem;
+  --header-height: 4rem;
+  --footer-height: 3rem;
+  
+  /* Legacy Variables for Compatibility */
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
@@ -12,19 +164,14 @@
   --text-muted: #94a3b8;
   --border-color: #e2e8f0;
   --border-hover: #cbd5e1;
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   
-  /* Brand Colors */
+  /* Brand Colors - Legacy */
   --golffox-primary: #1e40af;
   --golffox-secondary: #3b82f6;
   --golffox-accent: #06b6d4;
   --golffox-dark: #1e293b;
-  --golffox-gray-light: #f1f5f9;
-  --golffox-gray-medium: #64748b;
   
-  /* Status Colors */
+  /* Status Colors - Legacy */
   --success: #10b981;
   --success-bg: #ecfdf5;
   --warning: #f59e0b;
@@ -35,16 +182,24 @@
   --info-bg: #eff6ff;
 }
 
-/* Dark Theme */
+/* Tema Escuro */
+[data-theme="dark"],
 .dark {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --border-color: #334155;
-  --border-hover: #475569;
+  --bg-primary: var(--golffox-gray-800);
+  --bg-secondary: var(--golffox-gray-700);
+  --bg-tertiary: var(--golffox-gray-600);
+  
+  --text-primary: var(--golffox-white);
+  --text-secondary: var(--golffox-gray-300);
+  --text-tertiary: var(--golffox-gray-400);
+  --text-muted: var(--golffox-gray-400);
+  
+  --border-light: var(--golffox-gray-600);
+  --border-medium: var(--golffox-gray-500);
+  --border-dark: var(--golffox-gray-400);
+  --border-color: var(--golffox-gray-600);
+  --border-hover: var(--golffox-gray-500);
+  
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
@@ -399,12 +554,11 @@ html, body {
   box-sizing: border-box;
 }
 
+/* Remove conflicting body styles to allow Tailwind classes to work properly */
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Roboto', sans-serif;
-  background-color: #F4F4F4;
-  color: #2C3E50;
+  /* font-family and colors will be handled by Tailwind classes */
 }
 
 #root {
@@ -625,12 +779,12 @@ textarea:focus {
   box-shadow: var(--shadow-lg);
 }
 
-/* Apply theme to body */
-body {
+/* Apply theme to body - commented out to avoid conflicts with Tailwind */
+/* body {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
-}
+} */
 
 /* Smooth transitions for theme changes */
 * {
@@ -645,5 +799,69 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+/*!****************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!./styles/globals.css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* 🔮 Glow pulsante em laranja */
+  @keyframes neonPulseOrange {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(255, 165, 0, 0.8),
+                  0 0 20px rgba(255, 165, 0, 0.6),
+                  0 0 40px rgba(255, 165, 0, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(255, 165, 0, 1),
+                  0 0 40px rgba(255, 165, 0, 0.8),
+                  0 0 60px rgba(255, 165, 0, 0.6);
+    }
+  }
+
+  .animate-neon-orange {
+    animation: neonPulseOrange 1.8s infinite alternate;
+  }
+
+  /* 🌈 Bordas animadas gradiente (laranja → branco) */
+  @keyframes movingBorder {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .border-animate {
+    background: linear-gradient(90deg, orange, white, orange);
+    background-size: 200% 200%;
+    animation: movingBorder 3s linear infinite;
+    padding: 2px; /* controla a largura da borda */
+    border-radius: 10px;
+  }
+
+  /* Animação de fade in */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fadeIn {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  /* Efeito hover para botões */
+  .hover-glow:hover {
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
   }
 }

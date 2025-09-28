@@ -1,5 +1,5 @@
-import type { Alert, Route, Vehicle, Passenger } from '../types';
-import { AlertType, RouteStatus, VehicleStatus } from '../types';
+import type { Alert, Route, Vehicle, Passenger } from '../config/types';
+import { AlertType, RouteStatus, VehicleStatus } from '../config/types';
 
 export interface NotificationRule {
     id: string;
@@ -21,7 +21,7 @@ export interface NotificationSubscriber {
     };
 }
 
-class NotificationService {
+export class NotificationService {
     private alerts: Alert[] = [];
     private subscribers: NotificationSubscriber[] = [];
     private rules: NotificationRule[] = [];

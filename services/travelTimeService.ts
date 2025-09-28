@@ -1,4 +1,4 @@
-import { Route, Passenger } from '../types';
+import { Route, Passenger } from '../config/types';
 
 export interface TravelTimeEstimate {
   routeId: string;
@@ -41,7 +41,7 @@ export interface TravelTimeOptions {
   optimizeRoute?: boolean;
 }
 
-class TravelTimeService {
+export class TravelTimeService {
   private directionsService: google.maps.DirectionsService | null = null;
   private distanceMatrixService: google.maps.DistanceMatrixService | null = null;
   private trafficModel: google.maps.TrafficModel = google.maps.TrafficModel.BEST_GUESS;

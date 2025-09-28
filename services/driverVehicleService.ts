@@ -1,16 +1,17 @@
-import { supabase, supabaseAdmin } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
-
-// Tipos baseados no schema do Supabase
-export type DriverRow = Database['public']['Tables']['drivers']['Row'];
-export type DriverInsert = Database['public']['Tables']['drivers']['Insert'];
-export type DriverUpdate = Database['public']['Tables']['drivers']['Update'];
-
-export type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
-export type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
-export type VehicleUpdate = Database['public']['Tables']['vehicles']['Update'];
-
-// Tipos de performance removidos - tabela não existe no schema
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+  orderBy,
+  limit,
+  Timestamp
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Interfaces para compatibilidade com o código existente
 export interface Driver {
@@ -18,11 +19,33 @@ export interface Driver {
   name: string;
   email: string;
   phone: string;
+  cpf: string;
   licenseNumber: string;
   licenseExpiry: Date;
+  licenseCategory: string;
   status: 'active' | 'inactive' | 'suspended';
   vehicleId?: string;
   companyId: string;
+  address?: {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  medicalInfo?: {
+    bloodType?: string;
+    allergies?: string;
+    medications?: string;
+    observations?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +61,19 @@ export interface Vehicle {
   status: 'available' | 'in_use' | 'maintenance' | 'inactive';
   currentDriverId?: string;
   companyId: string;
+  chassisNumber?: string;
+  renavam?: string;
+  color?: string;
+  lastMaintenanceDate?: Date;
+  nextMaintenanceDate?: Date;
+  kilometers?: number;
+  fuelLevel?: number;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    timestamp: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,577 +84,665 @@ export interface DriverPerformance {
   date: Date;
   routesCompleted: number;
   totalDistance: number;
-  totalDuration: number;
-  fuelConsumed: number;
+  fuelConsumption: number;
   averageSpeed: number;
-  safetyScore: number;
   punctualityScore: number;
+  safetyScore: number;
   customerRating: number;
   incidents: number;
+  createdAt: Date;
 }
 
-export interface CreateDriverData {
-  name: string;
-  email: string;
-  phone: string;
-  licenseNumber: string;
-  licenseExpiry: Date;
-  companyId: string;
-  vehicleId?: string;
+export interface VehiclePerformance {
+  id: string;
+  vehicleId: string;
+  date: Date;
+  totalDistance: number;
+  fuelConsumption: number;
+  averageSpeed: number;
+  maintenanceAlerts: number;
+  utilizationRate: number;
+  createdAt: Date;
 }
 
-export interface UpdateDriverData {
-  name?: string;
-  email?: string;
-  phone?: string;
-  licenseNumber?: string;
-  licenseExpiry?: Date;
-  status?: Driver['status'];
-  vehicleId?: string;
-}
-
-export interface CreateVehicleData {
-  plate: string;
-  model: string;
-  brand: string;
-  year: number;
-  capacity: number;
-  fuelType: Vehicle['fuelType'];
+export interface DriverVehicleAssignment {
+  id: string;
+  driverId: string;
+  vehicleId: string;
+  assignedAt: Date;
+  assignedBy: string;
+  unassignedAt?: Date;
+  unassignedBy?: string;
+  reason?: string;
+  isActive: boolean;
   companyId: string;
 }
 
-export interface UpdateVehicleData {
-  plate?: string;
-  model?: string;
-  brand?: string;
-  year?: number;
-  capacity?: number;
-  fuelType?: Vehicle['fuelType'];
-  status?: Vehicle['status'];
-  currentDriverId?: string;
+export interface DriverWithVehicle extends Driver {
+  vehicle?: Vehicle;
+  currentAssignment?: DriverVehicleAssignment;
+  performance?: DriverPerformance[];
+}
+
+export interface VehicleWithDriver extends Vehicle {
+  driver?: Driver;
+  currentAssignment?: DriverVehicleAssignment;
+  performance?: VehiclePerformance[];
+}
+
+export interface AssignmentHistory {
+  assignments: DriverVehicleAssignment[];
+  totalAssignments: number;
+  activeAssignments: number;
+  averageAssignmentDuration: number;
+}
+
+export interface PerformanceMetrics {
+  driver: {
+    totalRoutes: number;
+    totalDistance: number;
+    averagePunctuality: number;
+    averageSafety: number;
+    averageRating: number;
+    totalIncidents: number;
+  };
+  vehicle: {
+    totalDistance: number;
+    averageFuelConsumption: number;
+    averageUtilization: number;
+    maintenanceAlerts: number;
+  };
+}
+
+export interface DriverVehicleFilters {
+  companyId?: string;
+  driverId?: string;
+  vehicleId?: string;
+  status?: 'active' | 'inactive';
+  dateFrom?: string;
+  dateTo?: string;
+  assignedBy?: string;
 }
 
 export class DriverVehicleService {
-  private static instance: DriverVehicleService;
-
-  public static getInstance(): DriverVehicleService {
-    if (!DriverVehicleService.instance) {
-      DriverVehicleService.instance = new DriverVehicleService();
-    }
-    return DriverVehicleService.instance;
-  }
-
   /**
-   * Converte motorista do Supabase para o formato esperado
+   * Busca motorista com veículo atribuído
    */
-  private convertDriverFromDB(dbDriver: DriverRow): Driver {
-    return {
-      id: dbDriver.id,
-      name: dbDriver.name,
-      email: dbDriver.email,
-      phone: dbDriver.phone,
-      licenseNumber: dbDriver.cnh, // Campo correto é 'cnh'
-      licenseExpiry: new Date(dbDriver.cnh_validity), // Campo correto é 'cnh_validity'
-      status: dbDriver.status === 'Ativo' ? 'active' : 'inactive', // Mapeamento de status
-      vehicleId: undefined, // Não há vehicle_id na tabela drivers
-      companyId: dbDriver.linked_company, // Campo correto é 'linked_company'
-      createdAt: new Date(dbDriver.created_at),
-      updatedAt: new Date(dbDriver.updated_at)
-    };
-  }
-
-  /**
-   * Converte veículo do Supabase para o formato esperado
-   */
-  private convertVehicleFromDB(dbVehicle: VehicleRow): Vehicle {
-    return {
-      id: dbVehicle.id,
-      plate: dbVehicle.plate,
-      model: dbVehicle.model,
-      brand: 'N/A', // Campo não existe na tabela
-      year: 2020, // Campo não existe na tabela
-      capacity: 20, // Campo não existe na tabela
-      fuelType: 'diesel', // Campo não existe na tabela
-      status: this.mapVehicleStatus(dbVehicle.status),
-      currentDriverId: dbVehicle.driver_id || undefined,
-      companyId: 'N/A', // Campo não existe na tabela vehicles
-      createdAt: new Date(dbVehicle.created_at),
-      updatedAt: new Date(dbVehicle.updated_at)
-    };
-  }
-
-  // Método convertDriverPerformanceFromDB removido - tabela não existe no schema
-
-  /**
-   * Mapeia status do veículo da tabela para o formato esperado
-   */
-  private mapVehicleStatus(dbStatus: 'Em Movimento' | 'Parado' | 'Com Problema' | 'Garagem'): Vehicle['status'] {
-    switch (dbStatus) {
-      case 'Em Movimento':
-        return 'in_use';
-      case 'Parado':
-        return 'available';
-      case 'Com Problema':
-        return 'maintenance';
-      case 'Garagem':
-        return 'inactive';
-      default:
-        return 'available';
-    }
-  }
-
-  // === MÉTODOS PARA MOTORISTAS ===
-
-  /**
-   * Obtém todos os motoristas de uma empresa
-   */
-  async getDrivers(companyId: string): Promise<Driver[]> {
+  async getDriverWithVehicle(driverId: string): Promise<DriverWithVehicle | null> {
     try {
-      const { data: drivers, error } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('linked_company', companyId)
-        .order('name');
-
-      if (error) throw error;
-
-      return (drivers || []).map(d => this.convertDriverFromDB(d));
-    } catch (error) {
-      console.error('Erro ao buscar motoristas:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtém motorista por ID
-   */
-  async getDriver(driverId: string): Promise<Driver | null> {
-    try {
-      const { data: driver, error } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('id', driverId)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
+      const driverDoc = await getDoc(doc(db, 'drivers', driverId));
+      
+      if (!driverDoc.exists()) {
+        return null;
       }
 
-      return this.convertDriverFromDB(driver);
-    } catch (error) {
-      console.error('Erro ao buscar motorista:', error);
-      throw error;
-    }
-  }
+      const driverData = { id: driverDoc.id, ...driverDoc.data() } as Driver;
+      const result: DriverWithVehicle = { ...driverData };
 
-  /**
-   * Cria novo motorista
-   */
-  async createDriver(driverData: CreateDriverData): Promise<Driver> {
-    try {
-      const { data: driver, error } = await supabase
-        .from('drivers')
-        .insert({
-          name: driverData.name,
-          email: driverData.email,
-          phone: driverData.phone,
-          cnh: driverData.licenseNumber,
-          cnh_validity: driverData.licenseExpiry.toISOString(),
-          linked_company: driverData.companyId,
-          status: 'Ativo'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Se foi atribuído um veículo, atualiza o veículo
+      // Buscar veículo atribuído
       if (driverData.vehicleId) {
-        await this.assignVehicleToDriver(driverData.vehicleId, driver.id);
-      }
-
-      return this.convertDriverFromDB(driver);
-    } catch (error) {
-      console.error('Erro ao criar motorista:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Atualiza motorista
-   */
-  async updateDriver(driverId: string, updateData: UpdateDriverData): Promise<Driver> {
-    try {
-      const updatePayload: Partial<DriverUpdate> = {};
-      
-      if (updateData.name) updatePayload.name = updateData.name;
-      if (updateData.email) updatePayload.email = updateData.email;
-      if (updateData.phone) updatePayload.phone = updateData.phone;
-      if (updateData.licenseNumber) updatePayload.cnh = updateData.licenseNumber;
-      if (updateData.licenseExpiry) updatePayload.cnh_validity = updateData.licenseExpiry.toISOString();
-      if (updateData.status) {
-        // Mapear status para o formato da tabela
-        updatePayload.status = updateData.status === 'active' ? 'Ativo' : 'Inativo';
-      }
-
-      const { data: driver, error } = await supabase
-        .from('drivers')
-        .update(updatePayload)
-        .eq('id', driverId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return this.convertDriverFromDB(driver);
-    } catch (error) {
-      console.error('Erro ao atualizar motorista:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Deleta motorista
-   */
-  async deleteDriver(driverId: string): Promise<void> {
-    try {
-      // Remove associação com veículo
-      await supabase
-        .from('vehicles')
-        .update({ current_driver_id: null })
-        .eq('current_driver_id', driverId);
-
-      // Remove o motorista
-      const { error } = await supabase
-        .from('drivers')
-        .delete()
-        .eq('id', driverId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Erro ao deletar motorista:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtém motoristas disponíveis (sem veículo atribuído)
-   */
-  async getAvailableDrivers(companyId: string): Promise<Driver[]> {
-    try {
-      const { data: drivers, error } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('linked_company', companyId)
-        .eq('status', 'Ativo')
-        .order('name');
-
-      if (error) throw error;
-
-      return (drivers || []).map(d => this.convertDriverFromDB(d));
-    } catch (error) {
-      console.error('Erro ao buscar motoristas disponíveis:', error);
-      throw error;
-    }
-  }
-
-  // === MÉTODOS PARA VEÍCULOS ===
-
-  /**
-   * Obtém todos os veículos de uma empresa
-   */
-  async getVehicles(companyId: string): Promise<Vehicle[]> {
-    try {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        // Campo company_id não existe na tabela
-        .order('plate');
-
-      if (error) throw error;
-
-      return (vehicles || []).map(v => this.convertVehicleFromDB(v));
-    } catch (error) {
-      console.error('Erro ao buscar veículos:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtém veículo por ID
-   */
-  async getVehicle(vehicleId: string): Promise<Vehicle | null> {
-    try {
-      const { data: vehicle, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('id', vehicleId)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
-      }
-
-      return this.convertVehicleFromDB(vehicle);
-    } catch (error) {
-      console.error('Erro ao buscar veículo:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Cria novo veículo
-   */
-  async createVehicle(vehicleData: CreateVehicleData): Promise<Vehicle> {
-    try {
-      const { data: vehicle, error } = await supabase
-        .from('vehicles')
-        .insert({
-          plate: vehicleData.plate,
-          model: vehicleData.model,
-          // Campos brand, year, capacity, fuel_type, company_id não existem na tabela
-          status: 'Parado' // Status padrão para veículo disponível
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return this.convertVehicleFromDB(vehicle);
-    } catch (error) {
-      console.error('Erro ao criar veículo:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Atualiza veículo
-   */
-  async updateVehicle(vehicleId: string, updateData: UpdateVehicleData): Promise<Vehicle> {
-    try {
-      const updatePayload: Partial<VehicleUpdate> = {};
-      
-      if (updateData.plate) updatePayload.plate = updateData.plate;
-      if (updateData.model) updatePayload.model = updateData.model;
-      // Campos brand, year, capacity, fuelType não existem na tabela vehicles
-      if (updateData.status) {
-        // Mapear status para os valores da tabela
-        switch (updateData.status) {
-          case 'available':
-            updatePayload.status = 'Parado';
-            break;
-          case 'in_use':
-            updatePayload.status = 'Em Movimento';
-            break;
-          case 'maintenance':
-            updatePayload.status = 'Com Problema';
-            break;
-          case 'inactive':
-            updatePayload.status = 'Garagem';
-            break;
+        const vehicleDoc = await getDoc(doc(db, 'vehicles', driverData.vehicleId));
+        if (vehicleDoc.exists()) {
+          result.vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() } as Vehicle;
         }
       }
-      if (updateData.currentDriverId !== undefined) updatePayload.driver_id = updateData.currentDriverId;
 
-      const { data: vehicle, error } = await supabase
-        .from('vehicles')
-        .update(updatePayload)
-        .eq('id', vehicleId)
-        .select()
-        .single();
+      // Buscar atribuição atual
+      const assignmentQuery = query(
+        collection(db, 'driverVehicleAssignments'),
+        where('driverId', '==', driverId),
+        where('isActive', '==', true),
+        limit(1)
+      );
+      
+      const assignmentSnapshot = await getDocs(assignmentQuery);
+      if (!assignmentSnapshot.empty) {
+        result.currentAssignment = {
+          id: assignmentSnapshot.docs[0].id,
+          ...assignmentSnapshot.docs[0].data()
+        } as DriverVehicleAssignment;
+      }
 
-      if (error) throw error;
+      // Buscar performance recente
+      const performanceQuery = query(
+        collection(db, 'driverPerformance'),
+        where('driverId', '==', driverId),
+        orderBy('date', 'desc'),
+        limit(30)
+      );
+      
+      const performanceSnapshot = await getDocs(performanceQuery);
+      result.performance = performanceSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as DriverPerformance[];
 
-      return this.convertVehicleFromDB(vehicle);
+      return result;
     } catch (error) {
-      console.error('Erro ao atualizar veículo:', error);
-      throw error;
+      console.error('Erro ao buscar motorista com veículo:', error);
+      return null;
     }
   }
 
   /**
-   * Deleta veículo
+   * Busca veículo com motorista atribuído
    */
-  async deleteVehicle(vehicleId: string): Promise<void> {
+  async getVehicleWithDriver(vehicleId: string): Promise<VehicleWithDriver | null> {
     try {
-      // Remove associação com motorista
-      await supabase
-        .from('drivers')
-        .update({ vehicle_id: null })
-        .eq('vehicle_id', vehicleId);
+      const vehicleDoc = await getDoc(doc(db, 'vehicles', vehicleId));
+      
+      if (!vehicleDoc.exists()) {
+        return null;
+      }
 
-      // Remove o veículo
-      const { error } = await supabase
-        .from('vehicles')
-        .delete()
-        .eq('id', vehicleId);
+      const vehicleData = { id: vehicleDoc.id, ...vehicleDoc.data() } as Vehicle;
+      const result: VehicleWithDriver = { ...vehicleData };
 
-      if (error) throw error;
+      // Buscar motorista atribuído
+      if (vehicleData.currentDriverId) {
+        const driverDoc = await getDoc(doc(db, 'drivers', vehicleData.currentDriverId));
+        if (driverDoc.exists()) {
+          result.driver = { id: driverDoc.id, ...driverDoc.data() } as Driver;
+        }
+      }
+
+      // Buscar atribuição atual
+      const assignmentQuery = query(
+        collection(db, 'driverVehicleAssignments'),
+        where('vehicleId', '==', vehicleId),
+        where('isActive', '==', true),
+        limit(1)
+      );
+      
+      const assignmentSnapshot = await getDocs(assignmentQuery);
+      if (!assignmentSnapshot.empty) {
+        result.currentAssignment = {
+          id: assignmentSnapshot.docs[0].id,
+          ...assignmentSnapshot.docs[0].data()
+        } as DriverVehicleAssignment;
+      }
+
+      // Buscar performance recente
+      const performanceQuery = query(
+        collection(db, 'vehiclePerformance'),
+        where('vehicleId', '==', vehicleId),
+        orderBy('date', 'desc'),
+        limit(30)
+      );
+      
+      const performanceSnapshot = await getDocs(performanceQuery);
+      result.performance = performanceSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as VehiclePerformance[];
+
+      return result;
     } catch (error) {
-      console.error('Erro ao deletar veículo:', error);
-      throw error;
+      console.error('Erro ao buscar veículo com motorista:', error);
+      return null;
     }
   }
-
-  /**
-   * Obtém veículos disponíveis (sem motorista atribuído)
-   */
-  async getAvailableVehicles(companyId: string): Promise<Vehicle[]> {
-    try {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        // Campo company_id não existe na tabela
-        .eq('status', 'Parado') // Status para veículo disponível
-        .is('driver_id', null)
-        .order('plate');
-
-      if (error) throw error;
-
-      return (vehicles || []).map(v => this.convertVehicleFromDB(v));
-    } catch (error) {
-      console.error('Erro ao buscar veículos disponíveis:', error);
-      throw error;
-    }
-  }
-
-  // === MÉTODOS DE ASSOCIAÇÃO ===
 
   /**
    * Atribui veículo a motorista
    */
-  async assignVehicleToDriver(vehicleId: string, driverId: string): Promise<void> {
+  async assignVehicleToDriver(
+    driverId: string,
+    vehicleId: string,
+    assignedBy: string,
+    companyId: string,
+    reason?: string
+  ): Promise<boolean> {
     try {
-      // Atualiza o veículo
-      await this.updateVehicle(vehicleId, {
-        currentDriverId: driverId,
-        status: 'in_use'
+      // Verificar se o motorista existe e está ativo
+      const driverDoc = await getDoc(doc(db, 'drivers', driverId));
+      if (!driverDoc.exists() || driverDoc.data().status !== 'active') {
+        throw new Error('Motorista não encontrado ou inativo');
+      }
+
+      // Verificar se o veículo existe e está disponível
+      const vehicleDoc = await getDoc(doc(db, 'vehicles', vehicleId));
+      if (!vehicleDoc.exists() || vehicleDoc.data().status !== 'available') {
+        throw new Error('Veículo não encontrado ou indisponível');
+      }
+
+      // Desatribuir veículo atual do motorista, se houver
+      await this.unassignCurrentVehicle(driverId, assignedBy, 'Nova atribuição');
+
+      // Desatribuir motorista atual do veículo, se houver
+      await this.unassignCurrentDriver(vehicleId, assignedBy, 'Nova atribuição');
+
+      // Criar nova atribuição
+      const assignmentData: Omit<DriverVehicleAssignment, 'id'> = {
+        driverId,
+        vehicleId,
+        assignedAt: new Date(),
+        assignedBy,
+        reason,
+        isActive: true,
+        companyId
+      };
+
+      const assignmentRef = doc(collection(db, 'driverVehicleAssignments'));
+      await updateDoc(assignmentRef, assignmentData);
+
+      // Atualizar motorista
+      await updateDoc(doc(db, 'drivers', driverId), {
+        vehicleId,
+        updatedAt: serverTimestamp()
       });
 
-      // Atualiza o motorista
-      await this.updateDriver(driverId, {
-        vehicleId: vehicleId
+      // Atualizar veículo
+      await updateDoc(doc(db, 'vehicles', vehicleId), {
+        currentDriverId: driverId,
+        status: 'in_use',
+        updatedAt: serverTimestamp()
       });
+
+      return true;
     } catch (error) {
       console.error('Erro ao atribuir veículo ao motorista:', error);
-      throw error;
+      return false;
     }
   }
 
   /**
-   * Remove atribuição de veículo de motorista
+   * Remove atribuição de veículo do motorista
    */
-  async unassignVehicleFromDriver(vehicleId: string, driverId: string): Promise<void> {
+  async unassignVehicleFromDriver(
+    driverId: string,
+    unassignedBy: string,
+    reason?: string
+  ): Promise<boolean> {
     try {
-      // Atualiza o veículo
-      await this.updateVehicle(vehicleId, {
-        currentDriverId: undefined,
-        status: 'available'
-      });
-
-      // Atualiza o motorista
-      await this.updateDriver(driverId, {
-        vehicleId: undefined
-      });
+      return await this.unassignCurrentVehicle(driverId, unassignedBy, reason);
     } catch (error) {
-      console.error('Erro ao remover atribuição de veículo:', error);
-      throw error;
+      console.error('Erro ao desatribuir veículo do motorista:', error);
+      return false;
     }
   }
 
-  // === MÉTODOS DE PERFORMANCE ===
-
-  // Métodos de performance comentados - tabela driver_performance não existe no schema
-  /*
-  async recordDriverPerformance(performanceData: Omit<DriverPerformance, 'id'>): Promise<DriverPerformance> {
-    // Implementação removida - tabela não existe
-    throw new Error('Funcionalidade de performance não implementada');
+  /**
+   * Remove atribuição de motorista do veículo
+   */
+  async unassignDriverFromVehicle(
+    vehicleId: string,
+    unassignedBy: string,
+    reason?: string
+  ): Promise<boolean> {
+    try {
+      return await this.unassignCurrentDriver(vehicleId, unassignedBy, reason);
+    } catch (error) {
+      console.error('Erro ao desatribuir motorista do veículo:', error);
+      return false;
+    }
   }
-
-  async getDriverPerformance(driverId: string, startDate?: Date, endDate?: Date): Promise<DriverPerformance[]> {
-    // Implementação removida - tabela não existe
-    return [];
-  }
-  */
 
   /**
-   * Obtém estatísticas de motoristas de uma empresa
+   * Busca histórico de atribuições
    */
-  async getDriverStats(companyId: string): Promise<{
-    totalDrivers: number;
-    activeDrivers: number;
-    inactiveDrivers: number;
-    suspendedDrivers: number;
-    driversWithVehicles: number;
-    driversWithoutVehicles: number;
-    averagePerformanceScore: number;
-  }> {
+  async getAssignmentHistory(filters: DriverVehicleFilters): Promise<AssignmentHistory> {
     try {
-      const { data: drivers, error } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('linked_company', companyId);
+      let q = collection(db, 'driverVehicleAssignments');
+      const constraints = [];
 
-      if (error) throw error;
+      if (filters.companyId) {
+        constraints.push(where('companyId', '==', filters.companyId));
+      }
+      if (filters.driverId) {
+        constraints.push(where('driverId', '==', filters.driverId));
+      }
+      if (filters.vehicleId) {
+        constraints.push(where('vehicleId', '==', filters.vehicleId));
+      }
+      if (filters.assignedBy) {
+        constraints.push(where('assignedBy', '==', filters.assignedBy));
+      }
 
-      const stats = {
-        totalDrivers: drivers?.length || 0,
-        activeDrivers: drivers?.filter(d => d.status === 'Ativo').length || 0,
-        inactiveDrivers: drivers?.filter(d => d.status === 'Inativo').length || 0,
-        suspendedDrivers: 0, // Não há status suspenso na tabela
-        driversWithVehicles: 0, // Não há vehicle_id na tabela drivers
-        driversWithoutVehicles: drivers?.length || 0,
-        averagePerformanceScore: 0 // Performance não implementada
+      constraints.push(orderBy('assignedAt', 'desc'));
+
+      const queryRef = query(q, ...constraints);
+      const snapshot = await getDocs(queryRef);
+      
+      const assignments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as DriverVehicleAssignment[];
+
+      // Filtrar por data se especificado
+      let filteredAssignments = assignments;
+      if (filters.dateFrom || filters.dateTo) {
+        filteredAssignments = assignments.filter(assignment => {
+          const assignedDate = new Date(assignment.assignedAt);
+          
+          if (filters.dateFrom && assignedDate < new Date(filters.dateFrom)) {
+            return false;
+          }
+          if (filters.dateTo && assignedDate > new Date(filters.dateTo)) {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      // Filtrar por status se especificado
+      if (filters.status) {
+        const isActive = filters.status === 'active';
+        filteredAssignments = filteredAssignments.filter(assignment => 
+          assignment.isActive === isActive
+        );
+      }
+
+      // Calcular estatísticas
+      const activeAssignments = filteredAssignments.filter(a => a.isActive).length;
+      
+      const completedAssignments = filteredAssignments.filter(a => !a.isActive && a.unassignedAt);
+      const totalDuration = completedAssignments.reduce((sum, assignment) => {
+        if (assignment.unassignedAt) {
+          const duration = new Date(assignment.unassignedAt).getTime() - new Date(assignment.assignedAt).getTime();
+          return sum + duration;
+        }
+        return sum;
+      }, 0);
+      
+      const averageAssignmentDuration = completedAssignments.length > 0 
+        ? totalDuration / completedAssignments.length / (1000 * 60 * 60 * 24) // em dias
+        : 0;
+
+      return {
+        assignments: filteredAssignments,
+        totalAssignments: filteredAssignments.length,
+        activeAssignments,
+        averageAssignmentDuration
+      };
+    } catch (error) {
+      console.error('Erro ao buscar histórico de atribuições:', error);
+      return {
+        assignments: [],
+        totalAssignments: 0,
+        activeAssignments: 0,
+        averageAssignmentDuration: 0
+      };
+    }
+  }
+
+  /**
+   * Busca métricas de performance
+   */
+  async getPerformanceMetrics(
+    driverId?: string,
+    vehicleId?: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<PerformanceMetrics> {
+    try {
+      const metrics: PerformanceMetrics = {
+        driver: {
+          totalRoutes: 0,
+          totalDistance: 0,
+          averagePunctuality: 0,
+          averageSafety: 0,
+          averageRating: 0,
+          totalIncidents: 0
+        },
+        vehicle: {
+          totalDistance: 0,
+          averageFuelConsumption: 0,
+          averageUtilization: 0,
+          maintenanceAlerts: 0
+        }
       };
 
-      return stats;
+      // Buscar performance do motorista
+      if (driverId) {
+        let driverQuery = query(
+          collection(db, 'driverPerformance'),
+          where('driverId', '==', driverId)
+        );
+
+        if (dateFrom || dateTo) {
+          // Para filtros de data, buscar todos e filtrar no cliente
+          const snapshot = await getDocs(driverQuery);
+          const performances = snapshot.docs.map(doc => doc.data() as DriverPerformance)
+            .filter(perf => {
+              const perfDate = new Date(perf.date);
+              if (dateFrom && perfDate < new Date(dateFrom)) return false;
+              if (dateTo && perfDate > new Date(dateTo)) return false;
+              return true;
+            });
+
+          if (performances.length > 0) {
+            metrics.driver.totalRoutes = performances.reduce((sum, p) => sum + p.routesCompleted, 0);
+            metrics.driver.totalDistance = performances.reduce((sum, p) => sum + p.totalDistance, 0);
+            metrics.driver.averagePunctuality = performances.reduce((sum, p) => sum + p.punctualityScore, 0) / performances.length;
+            metrics.driver.averageSafety = performances.reduce((sum, p) => sum + p.safetyScore, 0) / performances.length;
+            metrics.driver.averageRating = performances.reduce((sum, p) => sum + p.customerRating, 0) / performances.length;
+            metrics.driver.totalIncidents = performances.reduce((sum, p) => sum + p.incidents, 0);
+          }
+        } else {
+          const snapshot = await getDocs(driverQuery);
+          const performances = snapshot.docs.map(doc => doc.data() as DriverPerformance);
+
+          if (performances.length > 0) {
+            metrics.driver.totalRoutes = performances.reduce((sum, p) => sum + p.routesCompleted, 0);
+            metrics.driver.totalDistance = performances.reduce((sum, p) => sum + p.totalDistance, 0);
+            metrics.driver.averagePunctuality = performances.reduce((sum, p) => sum + p.punctualityScore, 0) / performances.length;
+            metrics.driver.averageSafety = performances.reduce((sum, p) => sum + p.safetyScore, 0) / performances.length;
+            metrics.driver.averageRating = performances.reduce((sum, p) => sum + p.customerRating, 0) / performances.length;
+            metrics.driver.totalIncidents = performances.reduce((sum, p) => sum + p.incidents, 0);
+          }
+        }
+      }
+
+      // Buscar performance do veículo
+      if (vehicleId) {
+        let vehicleQuery = query(
+          collection(db, 'vehiclePerformance'),
+          where('vehicleId', '==', vehicleId)
+        );
+
+        if (dateFrom || dateTo) {
+          // Para filtros de data, buscar todos e filtrar no cliente
+          const snapshot = await getDocs(vehicleQuery);
+          const performances = snapshot.docs.map(doc => doc.data() as VehiclePerformance)
+            .filter(perf => {
+              const perfDate = new Date(perf.date);
+              if (dateFrom && perfDate < new Date(dateFrom)) return false;
+              if (dateTo && perfDate > new Date(dateTo)) return false;
+              return true;
+            });
+
+          if (performances.length > 0) {
+            metrics.vehicle.totalDistance = performances.reduce((sum, p) => sum + p.totalDistance, 0);
+            metrics.vehicle.averageFuelConsumption = performances.reduce((sum, p) => sum + p.fuelConsumption, 0) / performances.length;
+            metrics.vehicle.averageUtilization = performances.reduce((sum, p) => sum + p.utilizationRate, 0) / performances.length;
+            metrics.vehicle.maintenanceAlerts = performances.reduce((sum, p) => sum + p.maintenanceAlerts, 0);
+          }
+        } else {
+          const snapshot = await getDocs(vehicleQuery);
+          const performances = snapshot.docs.map(doc => doc.data() as VehiclePerformance);
+
+          if (performances.length > 0) {
+            metrics.vehicle.totalDistance = performances.reduce((sum, p) => sum + p.totalDistance, 0);
+            metrics.vehicle.averageFuelConsumption = performances.reduce((sum, p) => sum + p.fuelConsumption, 0) / performances.length;
+            metrics.vehicle.averageUtilization = performances.reduce((sum, p) => sum + p.utilizationRate, 0) / performances.length;
+            metrics.vehicle.maintenanceAlerts = performances.reduce((sum, p) => sum + p.maintenanceAlerts, 0);
+          }
+        }
+      }
+
+      return metrics;
     } catch (error) {
-      console.error('Erro ao buscar estatísticas de motoristas:', error);
-      throw error;
+      console.error('Erro ao buscar métricas de performance:', error);
+      return {
+        driver: {
+          totalRoutes: 0,
+          totalDistance: 0,
+          averagePunctuality: 0,
+          averageSafety: 0,
+          averageRating: 0,
+          totalIncidents: 0
+        },
+        vehicle: {
+          totalDistance: 0,
+          averageFuelConsumption: 0,
+          averageUtilization: 0,
+          maintenanceAlerts: 0
+        }
+      };
     }
   }
 
   /**
-   * Obtém estatísticas de veículos de uma empresa
+   * Busca motoristas disponíveis (sem veículo atribuído)
    */
-  async getVehicleStats(companyId: string): Promise<{
-    totalVehicles: number;
-    availableVehicles: number;
-    inUseVehicles: number;
-    maintenanceVehicles: number;
-    inactiveVehicles: number;
-    averageCapacity: number;
-    fuelTypeDistribution: Record<string, number>;
-  }> {
+  async getAvailableDrivers(companyId: string): Promise<Driver[]> {
     try {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select('*');
-        // Campo company_id não existe na tabela
+      const q = query(
+        collection(db, 'drivers'),
+        where('companyId', '==', companyId),
+        where('status', '==', 'active')
+      );
+      
+      const snapshot = await getDocs(q);
+      const drivers = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Driver[];
 
-      if (error) throw error;
-
-      const stats = {
-        totalVehicles: vehicles?.length || 0,
-        availableVehicles: vehicles?.filter(v => v.status === 'Parado').length || 0,
-        inUseVehicles: vehicles?.filter(v => v.status === 'Em Movimento').length || 0,
-        maintenanceVehicles: vehicles?.filter(v => v.status === 'Com Problema').length || 0,
-        inactiveVehicles: vehicles?.filter(v => v.status === 'Garagem').length || 0,
-        averageCapacity: 20, // Valor padrão já que o campo não existe
-        fuelTypeDistribution: { 'diesel': vehicles?.length || 0 } as Record<string, number>
-      };
-
-      // Campos capacity e fuel_type não existem na tabela vehicles
-
-      return stats;
+      // Filtrar motoristas sem veículo atribuído
+      return drivers.filter(driver => !driver.vehicleId);
     } catch (error) {
-      console.error('Erro ao buscar estatísticas de veículos:', error);
-      throw error;
+      console.error('Erro ao buscar motoristas disponíveis:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca veículos disponíveis (sem motorista atribuído)
+   */
+  async getAvailableVehicles(companyId: string): Promise<Vehicle[]> {
+    try {
+      const q = query(
+        collection(db, 'vehicles'),
+        where('companyId', '==', companyId),
+        where('status', '==', 'available')
+      );
+      
+      const snapshot = await getDocs(q);
+      const vehicles = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Vehicle[];
+
+      // Filtrar veículos sem motorista atribuído
+      return vehicles.filter(vehicle => !vehicle.currentDriverId);
+    } catch (error) {
+      console.error('Erro ao buscar veículos disponíveis:', error);
+      return [];
+    }
+  }
+
+  // Métodos auxiliares privados
+
+  private async unassignCurrentVehicle(
+    driverId: string,
+    unassignedBy: string,
+    reason?: string
+  ): Promise<boolean> {
+    try {
+      // Buscar atribuição ativa atual
+      const assignmentQuery = query(
+        collection(db, 'driverVehicleAssignments'),
+        where('driverId', '==', driverId),
+        where('isActive', '==', true)
+      );
+      
+      const assignmentSnapshot = await getDocs(assignmentQuery);
+      
+      for (const assignmentDoc of assignmentSnapshot.docs) {
+        const assignment = assignmentDoc.data() as DriverVehicleAssignment;
+        
+        // Desativar atribuição
+        await updateDoc(doc(db, 'driverVehicleAssignments', assignmentDoc.id), {
+          isActive: false,
+          unassignedAt: new Date(),
+          unassignedBy,
+          reason
+        });
+
+        // Atualizar veículo para disponível
+        if (assignment.vehicleId) {
+          await updateDoc(doc(db, 'vehicles', assignment.vehicleId), {
+            currentDriverId: null,
+            status: 'available',
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+
+      // Atualizar motorista
+      await updateDoc(doc(db, 'drivers', driverId), {
+        vehicleId: null,
+        updatedAt: serverTimestamp()
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao desatribuir veículo atual:', error);
+      return false;
+    }
+  }
+
+  private async unassignCurrentDriver(
+    vehicleId: string,
+    unassignedBy: string,
+    reason?: string
+  ): Promise<boolean> {
+    try {
+      // Buscar atribuição ativa atual
+      const assignmentQuery = query(
+        collection(db, 'driverVehicleAssignments'),
+        where('vehicleId', '==', vehicleId),
+        where('isActive', '==', true)
+      );
+      
+      const assignmentSnapshot = await getDocs(assignmentQuery);
+      
+      for (const assignmentDoc of assignmentSnapshot.docs) {
+        const assignment = assignmentDoc.data() as DriverVehicleAssignment;
+        
+        // Desativar atribuição
+        await updateDoc(doc(db, 'driverVehicleAssignments', assignmentDoc.id), {
+          isActive: false,
+          unassignedAt: new Date(),
+          unassignedBy,
+          reason
+        });
+
+        // Atualizar motorista
+        if (assignment.driverId) {
+          await updateDoc(doc(db, 'drivers', assignment.driverId), {
+            vehicleId: null,
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+
+      // Atualizar veículo
+      await updateDoc(doc(db, 'vehicles', vehicleId), {
+        currentDriverId: null,
+        status: 'available',
+        updatedAt: serverTimestamp()
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao desatribuir motorista atual:', error);
+      return false;
     }
   }
 }
 
-// Instância singleton
-export const driverVehicleService = DriverVehicleService.getInstance();
+export const driverVehicleService = new DriverVehicleService();
+export default driverVehicleService;

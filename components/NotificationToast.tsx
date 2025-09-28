@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Info, X, CheckCircle } from 'lucide-react';
-import type { Alert } from '../types';
-import { AlertType } from '../types';
+import type { Alert } from '../config/types';
+import { AlertType } from '../config/types';
 
 export interface ToastNotification extends Alert {
     isVisible: boolean;
@@ -22,6 +22,13 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
 }) => {
     const [isExiting, setIsExiting] = useState(false);
 
+    const handleDismiss = useCallback(() => {
+        setIsExiting(true);
+        setTimeout(() => {
+            onDismiss(notification.id);
+        }, 300); // Tempo da animação de saída
+    }, [onDismiss, notification.id]);
+
     useEffect(() => {
         if (notification.autoHide !== false) {
             const duration = notification.duration || 5000;
@@ -31,14 +38,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
 
             return () => clearTimeout(timer);
         }
-    }, [notification]);
-
-    const handleDismiss = () => {
-        setIsExiting(true);
-        setTimeout(() => {
-            onDismiss(notification.id);
-        }, 300); // Tempo da animação de saída
-    };
+    }, [notification, handleDismiss]);
 
     const getIcon = () => {
         switch (notification.type) {

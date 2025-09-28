@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { GOLFFOX_LOGO_BASE64 } from '../../constants';
-import type { Employee } from '../../types';
+import Image from 'next/image';
+import { GOLFFOX_LOGO_BASE64 } from '../../config/constants';
+import type { Employee } from '../../config/types';
 
 interface PassengerLoginScreenProps {
     employees: Employee[];
@@ -33,7 +34,7 @@ const PassengerLoginScreen: React.FC<PassengerLoginScreenProps> = ({ employees, 
 
     return (
         <div className="flex flex-col items-center justify-center h-full bg-white p-4 sm:p-8">
-            <img src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-20 sm:h-24 mb-6 sm:mb-8" />
+            <Image src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-20 sm:h-24 mb-6 sm:mb-8" width={96} height={96} />
             <h1 className="text-2xl sm:text-3xl font-bold text-golffox-gray-dark mb-2">Acesso do Passageiro</h1>
             <p className="text-golffox-gray-medium mb-8 sm:mb-10 text-center text-sm sm:text-base">Use seu CPF e senha para acompanhar sua rota.</p>
 

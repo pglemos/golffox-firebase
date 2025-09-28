@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import type { Route, Passenger, Company, Employee } from '../types';
-import { RouteStatus } from '../types';
+import type { Route, Passenger, Company, Employee } from '../config/types';
+import { RouteStatus } from '../config/types';
 import { PlusCircleIcon, PencilIcon, TrashIcon, XMarkIcon, UserIcon, MapPinIcon, ClockIcon, TruckIcon } from './icons/Icons';
-import { MOCK_COMPANIES, MOCK_EMPLOYEES } from '../constants';
+import { MOCK_COMPANIES, MOCK_EMPLOYEES } from '../config/constants';
 import { routeOptimizationService } from '../services/routeOptimizationService';
 
 const getStatusBadgeClass = (status: RouteStatus) => {
@@ -144,7 +144,7 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
   }, []);
 
   // Generate route optimization suggestion
-  const generateRouteOptimization = () => {
+  const generateRouteOptimization = useCallback(() => {
     if (!currentRoute) {
       setRouteOptimizationSuggestion('');
       return;
@@ -153,12 +153,12 @@ const RoutesTable: React.FC<RoutesTableProps> = ({ routes, setRoutes }) => {
     const passengerCount = currentRoute.passengers.list.length;
     const suggestion = generateRouteOptimizationSuggestion(passengerCount);
     setRouteOptimizationSuggestion(suggestion);
-  };
+  }, [currentRoute, generateRouteOptimizationSuggestion]);
 
   // Update route optimization when passengers change
   useEffect(() => {
     generateRouteOptimization();
-  }, [currentRoute?.passengers.list]);
+  }, [generateRouteOptimization]);
 
   const openCreateModal = () => {
     setModalMode('create');

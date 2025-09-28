@@ -4,8 +4,8 @@ import DriverApp from '../views/DriverApp';
 import PassengerApp from '../views/PassengerApp';
 import ClientPortal from '../views/ClientPortal';
 import AppSelector from './AppSelector';
-import type { AppView, Route, Company, Employee, PermissionProfile } from '../types';
-import { APP_VIEWS, MOCK_ROUTES, MOCK_COMPANIES, MOCK_EMPLOYEES, MOCK_PERMISSION_PROFILES } from '../constants';
+import type { AppView, Route, Company, Employee, PermissionProfile } from '../config/types';
+import { APP_VIEWS, MOCK_ROUTES, MOCK_COMPANIES, MOCK_EMPLOYEES, MOCK_PERMISSION_PROFILES } from '../config/constants';
 
 const AdminPanel: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(APP_VIEWS.MANAGEMENT);

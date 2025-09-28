@@ -1,58 +1,172 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const HomePage: React.FC = () => {
+  const containerStyle = {
+    height: '100vh',
+    width: '100vw',
+    backgroundColor: '#F4F4F4',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'Roboto, sans-serif'
+  };
+
+  const cardStyle = {
+    backgroundColor: 'white',
+    padding: '32px',
+    borderRadius: '12px',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+    maxWidth: '672px',
+    width: '100%',
+    margin: '0 16px'
+  };
+
+  const headerStyle = {
+    textAlign: 'center' as const,
+    marginBottom: '32px'
+  };
+
+  const logoStyle = {
+    height: '80px',
+    margin: '0 auto 16px auto',
+    display: 'block'
+  };
+
+  const titleStyle = {
+    fontSize: '1.875rem',
+    fontWeight: 'bold',
+    color: '#002D56',
+    marginBottom: '8px'
+  };
+
+  const subtitleStyle = {
+    color: '#7F8C8D',
+    fontSize: '1rem'
+  };
+
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '16px',
+    marginBottom: '32px'
+  };
+
+  const baseLinkStyle = {
+    padding: '24px',
+    borderRadius: '8px',
+    textAlign: 'center' as const,
+    transition: 'all 0.2s ease',
+    textDecoration: 'none',
+    display: 'block',
+    color: 'white'
+  };
+
+  const painelLinkStyle = {
+    ...baseLinkStyle,
+    backgroundColor: '#002D56'
+  };
+
+  const motoristaLinkStyle = {
+    ...baseLinkStyle,
+    backgroundColor: '#FF5F00'
+  };
+
+  const passageiroLinkStyle = {
+    ...baseLinkStyle,
+    backgroundColor: '#2C3E50'
+  };
+
+  const operadorLinkStyle = {
+    ...baseLinkStyle,
+    backgroundColor: '#E74C3C'
+  };
+
+  const linkTitleStyle = {
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    marginBottom: '8px'
+  };
+
+  const linkDescriptionStyle = {
+    fontSize: '0.875rem',
+    opacity: 0.9
+  };
+
+  const adminContainerStyle = {
+    textAlign: 'center' as const
+  };
+
+  const adminLinkStyle = {
+    color: '#7F8C8D',
+    fontSize: '0.875rem',
+    textDecoration: 'underline'
+  };
+
   return (
-    <div className="h-screen w-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full mx-4">
-        <div className="text-center mb-8">
-          <img 
+    <div style={containerStyle}>
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <Image 
             src="/assets/golffox-logo.svg" 
             alt="Golffox Logo" 
-            className="h-20 mx-auto mb-4"
+            style={logoStyle}
+            width={120}
+            height={40}
           />
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Sistema Golffox</h1>
-          <p className="text-gray-600">Selecione o módulo que deseja acessar</p>
+          <h1 style={titleStyle}>Sistema Golffox</h1>
+          <p style={subtitleStyle}>Selecione o módulo que deseja acessar</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div style={gridStyle}>
           <Link
             href="/painel"
-            className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
+            style={painelLinkStyle}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#004A8D'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#002D56'}
           >
-            <div className="text-xl font-semibold mb-2">Painel de Gestão</div>
-            <div className="text-sm opacity-90">Sistema completo de gestão Golffox</div>
+            <div style={linkTitleStyle}>Painel de Gestão</div>
+            <div style={linkDescriptionStyle}>Sistema completo de gestão Golffox</div>
           </Link>
 
           <Link
             href="/motorista"
-            className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
+            style={motoristaLinkStyle}
+            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
           >
-            <div className="text-xl font-semibold mb-2">App do Motorista</div>
-            <div className="text-sm opacity-90">Interface para motoristas</div>
+            <div style={linkTitleStyle}>App do Motorista</div>
+            <div style={linkDescriptionStyle}>Interface para motoristas</div>
           </Link>
 
           <Link
             href="/passageiro"
-            className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
+            style={passageiroLinkStyle}
+            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
           >
-            <div className="text-xl font-semibold mb-2">App do Passageiro</div>
-            <div className="text-sm opacity-90">Interface para passageiros</div>
+            <div style={linkTitleStyle}>App do Passageiro</div>
+            <div style={linkDescriptionStyle}>Interface para passageiros</div>
           </Link>
 
           <Link
             href="/operador"
-            className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg text-center transition-colors duration-200 block"
+            style={operadorLinkStyle}
+            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
           >
-            <div className="text-xl font-semibold mb-2">Portal do Operador</div>
-            <div className="text-sm opacity-90">Interface para operadores</div>
+            <div style={linkTitleStyle}>Portal do Operador</div>
+            <div style={linkDescriptionStyle}>Interface para operadores</div>
           </Link>
         </div>
 
-        <div className="text-center">
+        <div style={adminContainerStyle}>
           <Link
             href="/admin"
-            className="text-gray-500 hover:text-gray-700 text-sm underline"
+            style={adminLinkStyle}
+            onMouseOver={(e) => e.currentTarget.style.color = '#2C3E50'}
+            onMouseOut={(e) => e.currentTarget.style.color = '#7F8C8D'}
           >
             Área Administrativa
           </Link>

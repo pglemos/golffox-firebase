@@ -1,5 +1,5 @@
 import { BusStatus } from '../components/BusIcon3D';
-import { VehicleStatus } from '../types';
+import { VehicleStatus } from '../config/types';
 
 // Interface para o objeto de ícone do mapa
 interface MapIcon {

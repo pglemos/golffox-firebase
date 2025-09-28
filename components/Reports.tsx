@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { generateReport } from '../services/geminiService';
-import { MOCK_ROUTES, MOCK_ALERTS, MOCK_VEHICLES } from '../constants';
+import { MOCK_ROUTES, MOCK_ALERTS, MOCK_VEHICLES } from '../config/constants';
 import { PaperAirplaneIcon } from './icons/Icons';
 
 const Reports: React.FC = () => {

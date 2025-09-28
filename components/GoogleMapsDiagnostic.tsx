@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GOOGLE_MAPS_CONFIG } from '../config';
+import { GOOGLE_MAPS_CONFIG } from '../config/config';
 
 interface DiagnosticInfo {
   apiKeyPresent: boolean;

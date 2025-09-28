@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MOCK_ROUTES, MOCK_DRIVERS, MOCK_VEHICLES } from '../constants';
-import { RouteStatus } from '../types';
+import { MOCK_ROUTES, MOCK_DRIVERS, MOCK_VEHICLES } from '../config/constants';
+import { RouteStatus } from '../config/types';
 import { LifebuoyIcon, PaperAirplaneIcon } from './icons/Icons';
 
 const RescueDispatch: React.FC = () => {

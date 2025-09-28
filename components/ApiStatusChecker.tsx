@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { checkApiConfiguration } from '../config';
+import { checkApiConfiguration } from '../config/config';
 import { ExclamationTriangleIcon, CheckCircleIcon, InformationCircleIcon } from './icons/Icons';
 
 interface ApiStatus {

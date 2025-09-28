@@ -2,12 +2,19 @@
 export { BaseCrudService } from './baseCrudService'
 export type { CrudResponse, CrudListResponse, PaginationOptions, FilterOptions, SortOptions } from './baseCrudService'
 
+// Import service instances
+import { authService } from './authService'
+import { companiesService } from './companiesService'
+import { driversService } from './driversService'
+import { vehiclesService } from './vehiclesService'
+import { passengersService } from './passengersService'
+import { routesService } from './routesService'
+import { alertsService } from './alertsService'
+
 // Authentication service
-export { AuthService, authService } from './authService'
+export { AuthService } from './authService'
+export { authService } from './authService'
 export type { 
-  UserRow, 
-  UserInsert, 
-  UserUpdate, 
   UserRole, 
   CompanyStatus,
   AuthUser,
@@ -19,9 +26,10 @@ export type {
 } from './authService'
 
 // Companies service
-export { CompaniesService, companiesService } from './companiesService'
+export { CompaniesService } from './companiesService'
+export { companiesService } from './companiesService'
 export type { 
-  CompanyRow, 
+  Company, 
   CompanyInsert, 
   CompanyUpdate,
   CompanyWithStats,
@@ -29,9 +37,10 @@ export type {
 } from './companiesService'
 
 // Drivers service
-export { DriversService, driversService } from './driversService'
+export { DriversService } from './driversService'
+export { driversService } from './driversService'
 export type { 
-  DriverRow, 
+  Driver, 
   DriverInsert, 
   DriverUpdate,
   DriverWithVehicle,
@@ -39,9 +48,10 @@ export type {
 } from './driversService'
 
 // Vehicles service
-export { VehiclesService, vehiclesService } from './vehiclesService'
+export { VehiclesService } from './vehiclesService'
+export { vehiclesService } from './vehiclesService'
 export type { 
-  VehicleRow, 
+  Vehicle, 
   VehicleInsert, 
   VehicleUpdate,
   VehicleWithDriver,
@@ -49,9 +59,10 @@ export type {
 } from './vehiclesService'
 
 // Passengers service
-export { PassengersService, passengersService } from './passengersService'
+export { PassengersService } from './passengersService'
+export { passengersService } from './passengersService'
 export type { 
-  PassengerRow, 
+  Passenger, 
   PassengerInsert, 
   PassengerUpdate,
   PassengerWithRoutes,
@@ -59,9 +70,10 @@ export type {
 } from './passengersService'
 
 // Routes service
-export { RoutesService, routesService } from './routesService'
+export { RoutesService } from './routesService'
+export { routesService } from './routesService'
 export type { 
-  RouteRow, 
+  Route, 
   RouteInsert, 
   RouteUpdate,
   RouteWithDetails,
@@ -69,17 +81,18 @@ export type {
 } from './routesService'
 
 // Alerts service
-export { AlertsService, alertsService } from './alertsService'
+export { AlertsService } from './alertsService'
+export { alertsService } from './alertsService'
 export type { 
-  AlertRow, 
+  Alert, 
   AlertInsert, 
   AlertUpdate,
   AlertWithDetails,
-  AlertFilters
+  AlertFilters,
+  AlertStats
 } from './alertsService'
 
-// Centralized services object for easy access - Temporariamente comentado para debug
-/*
+// Centralized services object for easy access
 export const services = {
   auth: authService,
   companies: companiesService,
@@ -92,4 +105,3 @@ export const services = {
 
 // Service types for type safety
 export type ServiceType = keyof typeof services
-*/

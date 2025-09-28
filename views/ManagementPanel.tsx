@@ -13,8 +13,8 @@ import CompaniesManagement from '../components/CompaniesManagement';
 import PermissionsManagement from '../components/PermissionsManagement';
 import RouteHistory from '../components/RouteHistory';
 import CostControl from '../components/CostControl';
-import type { View, Route, Company, Employee, PermissionProfile } from '../types';
-import { VIEWS } from '../constants';
+import type { View, Route, Company, Employee, PermissionProfile } from '../config/types';
+import { VIEWS } from '../config/constants';
 
 // Props interface to receive state from the parent App component
 interface ManagementPanelProps {

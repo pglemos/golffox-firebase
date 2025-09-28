@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Route } from '../types';
+import { Route } from '../config/types';
 import { mockTravelTimeService } from '../services/mockTravelTimeService';
 import { 
   TravelTimeEstimate, 

@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { GEMINI_CONFIG } from "../config";
+import { GEMINI_CONFIG } from '../config/config';
 
 export const generateReport = async (prompt: string, contextData: any): Promise<string> => {
   const API_KEY = GEMINI_CONFIG.apiKey;

@@ -69,14 +69,15 @@ export const useVehicleTracking = (): UseVehicleTrackingReturn => {
     loadVehicles();
     
     // Adiciona listener para eventos
-    mockVehicleTrackingService.addEventListener(eventListenerId.current, handleTrackingEvent);
+    const currentEventListenerId = eventListenerId.current;
+    mockVehicleTrackingService.addEventListener(currentEventListenerId, handleTrackingEvent);
 
     return () => {
       // Cleanup
-      mockVehicleTrackingService.removeEventListener(eventListenerId.current);
+      mockVehicleTrackingService.removeEventListener(currentEventListenerId);
       mockVehicleTrackingService.stopAllTracking();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Atualiza histórico quando veículo selecionado muda
   useEffect(() => {
@@ -90,7 +91,7 @@ export const useVehicleTracking = (): UseVehicleTrackingReturn => {
         metrics: null
       }));
     }
-  }, [state.selectedVehicle]);
+  }, [state.selectedVehicle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadVehicles = useCallback(() => {
     try {

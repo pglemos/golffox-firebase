@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 import GoogleMapsLoader from '../components/GoogleMapsLoader'
-import type { Route as RouteType, Company, Employee, PermissionProfile } from '../types'
-import { MOCK_ROUTES, MOCK_COMPANIES, MOCK_EMPLOYEES, MOCK_PERMISSION_PROFILES } from '../constants'
+import type { Route as RouteType, Company, Employee, PermissionProfile } from '../config/types'
+import { MOCK_ROUTES, MOCK_COMPANIES, MOCK_EMPLOYEES, MOCK_PERMISSION_PROFILES } from '../config/constants'
 
 interface AppContextType {
   routes: RouteType[]

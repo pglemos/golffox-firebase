@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { GOOGLE_MAPS_CONFIG } from '../config';
+import { GOOGLE_MAPS_CONFIG } from '../config/config';
 
 declare global {
   interface Window {

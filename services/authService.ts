@@ -1,11 +1,26 @@
-import { supabase, supabaseAdmin } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
-import type { User, Session } from '@supabase/supabase-js';
-
-// Tipos baseados no schema do Supabase
-export type UserRow = Database['public']['Tables']['users']['Row'];
-export type UserInsert = Database['public']['Tables']['users']['Insert'];
-export type UserUpdate = Database['public']['Tables']['users']['Update'];
+import { 
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  updatePassword,
+  sendPasswordResetEmail,
+  updateEmail,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  serverTimestamp,
+  query,
+  where,
+  collection,
+  getDocs
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 export type UserRole = 'admin' | 'operator' | 'driver' | 'passenger';
 export type CompanyStatus = 'Ativo' | 'Inativo';
@@ -38,7 +53,7 @@ export interface RegisterData {
 
 export interface AuthResponse {
   user: AuthUser | null;
-  session: Session | null;
+  firebaseUser: FirebaseUser | null;
   error: string | null;
 }
 
@@ -47,491 +62,385 @@ export interface PasswordResetData {
 }
 
 export interface PasswordUpdateData {
-  password: string;
+  currentPassword: string;
   newPassword: string;
 }
 
+export interface ProfileUpdateData {
+  name?: string;
+  email?: string;
+}
+
 export class AuthService {
-  private static instance: AuthService;
-  private currentUser: AuthUser | null = null;
-  private authListeners: ((user: AuthUser | null) => void)[] = [];
-
-  public static getInstance(): AuthService {
-    if (!AuthService.instance) {
-      AuthService.instance = new AuthService();
-    }
-    return AuthService.instance;
-  }
-
-  constructor() {
-    // Configura listener para mudanças de autenticação
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await this.loadUserProfile(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        this.currentUser = null;
-        this.notifyAuthListeners(null);
-      }
-    });
-
-    // Carrega usuário atual se já estiver logado
-    this.initializeAuth();
-  }
-
-  /**
-   * Inicializa autenticação verificando sessão existente
-   */
-  private async initializeAuth(): Promise<void> {
+  // Fazer login
+  async signIn({ email, password }: LoginCredentials): Promise<AuthResponse> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await this.loadUserProfile(session.user);
-      }
-    } catch (error) {
-      console.error('Erro ao inicializar autenticação:', error);
-    }
-  }
-
-  /**
-   * Carrega perfil completo do usuário do banco de dados
-   */
-  private async loadUserProfile(user: User): Promise<void> {
-    try {
-      const { data: userProfile, error } = await supabase
-        .from('users')
-        .select(`
-          *,
-          companies (
-            id,
-            name,
-            status
-          ),
-          permission_profiles (
-            id,
-            name,
-            access
-          )
-        `)
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-
-      if (userProfile) {
-        this.currentUser = {
-          id: userProfile.id,
-          email: userProfile.email,
-          name: userProfile.name,
-          role: userProfile.role as UserRole,
-          companyId: userProfile.company_id,
-          companyName: userProfile.companies?.name || 'Empresa não encontrada',
-          isActive: true, // Assumindo que usuários carregados estão ativos
-          lastLogin: undefined, // Campo não existe na tabela
-          createdAt: new Date(userProfile.created_at)
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      
+      // Buscar dados do usuário no Firestore
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      
+      if (!userDoc.exists()) {
+        return {
+          user: null,
+          firebaseUser: null,
+          error: 'Dados do usuário não encontrados'
         };
-
-        // Atualiza último login
-        await this.updateLastLogin();
-        
-        this.notifyAuthListeners(this.currentUser);
       }
-    } catch (error) {
-      console.error('Erro ao carregar perfil do usuário:', error);
-      this.currentUser = null;
-      this.notifyAuthListeners(null);
-    }
-  }
 
-  /**
-   * Atualiza timestamp do último login
-   */
-  private async updateLastLogin(): Promise<void> {
-    if (!this.currentUser) return;
-
-    try {
-      await supabase
-        .from('users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', this.currentUser.id);
-    } catch (error) {
-      console.error('Erro ao atualizar último login:', error);
-    }
-  }
-
-  /**
-   * Notifica listeners sobre mudanças de autenticação
-   */
-  private notifyAuthListeners(user: AuthUser | null): void {
-    this.authListeners.forEach(listener => {
-      try {
-        listener(user);
-      } catch (error) {
-        console.error('Erro ao notificar listener de autenticação:', error);
+      const userData = userDoc.data();
+      
+      // Verificar se o usuário está ativo
+      if (!userData.isActive) {
+        await signOut(auth);
+        return {
+          user: null,
+          firebaseUser: null,
+          error: 'Usuário inativo. Entre em contato com o administrador.'
+        };
       }
-    });
-  }
 
-  /**
-   * Adiciona listener para mudanças de autenticação
-   */
-  onAuthStateChange(callback: (user: AuthUser | null) => void): () => void {
-    this.authListeners.push(callback);
-    
-    // Retorna função para remover o listener
-    return () => {
-      const index = this.authListeners.indexOf(callback);
-      if (index > -1) {
-        this.authListeners.splice(index, 1);
-      }
-    };
-  }
+      // Buscar dados da empresa
+      const companyDoc = await getDoc(doc(db, 'companies', userData.companyId));
+      const companyData = companyDoc.exists() ? companyDoc.data() : null;
 
-  /**
-   * Realiza login do usuário
-   */
-  async signIn(credentials: LoginCredentials): Promise<AuthResponse> {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password
+      // Atualizar último login
+      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        lastLogin: serverTimestamp()
       });
 
-      if (error) {
-        return {
-          user: null,
-          session: null,
-          error: this.translateAuthError(error.message)
-        };
-      }
-
-      if (data.user) {
-        await this.loadUserProfile(data.user);
-      }
+      const authUser: AuthUser = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        name: userData.name || firebaseUser.displayName || '',
+        role: userData.role || 'passenger',
+        companyId: userData.companyId || '',
+        companyName: companyData?.name || '',
+        isActive: userData.isActive || false,
+        lastLogin: new Date(),
+        createdAt: userData.createdAt?.toDate() || new Date()
+      };
 
       return {
-        user: this.currentUser,
-        session: data.session,
+        user: authUser,
+        firebaseUser,
         error: null
       };
-    } catch (error) {
-      console.error('Erro no login:', error);
+    } catch (error: any) {
+      let errorMessage = 'Erro ao fazer login';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          errorMessage = 'Email ou senha incorretos';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Usuário desabilitado';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Muitas tentativas. Tente novamente mais tarde.';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao fazer login';
+      }
+
       return {
         user: null,
-        session: null,
-        error: 'Erro interno do servidor'
+        firebaseUser: null,
+        error: errorMessage
       };
     }
   }
 
-  /**
-   * Registra novo usuário
-   */
-  async signUp(registerData: RegisterData): Promise<AuthResponse> {
+  // Registrar usuário
+  async signUp({ email, password, name, role, companyId }: RegisterData): Promise<AuthResponse> {
     try {
-      // Usa o cliente admin para criar usuário (server-side)
-      if (!supabaseAdmin) {
+      // Verificar se a empresa existe
+      const companyDoc = await getDoc(doc(db, 'companies', companyId));
+      if (!companyDoc.exists()) {
         return {
           user: null,
-          session: null,
-          error: 'Configuração de admin não disponível'
+          firebaseUser: null,
+          error: 'Empresa não encontrada'
         };
       }
 
-      // Primeiro, cria o usuário no Supabase Auth usando admin client
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: registerData.email,
-        password: registerData.password,
-        email_confirm: true // Confirma email automaticamente
-      });
-
-      if (authError) {
+      const companyData = companyDoc.data();
+      
+      // Verificar se a empresa está ativa
+      if (companyData.status !== 'Ativo') {
         return {
           user: null,
-          session: null,
-          error: this.translateAuthError(authError.message)
+          firebaseUser: null,
+          error: 'Empresa inativa'
         };
       }
 
-      if (!authData.user) {
-        return {
-          user: null,
-          session: null,
-          error: 'Falha ao criar usuário'
-        };
-      }
+      // Criar usuário no Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
 
-      // Depois, cria o perfil do usuário na tabela users usando admin client
-      const { error: profileError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: registerData.email,
-          name: registerData.name,
-          role: registerData.role,
-          company_id: registerData.companyId
-        });
+      // Atualizar perfil no Firebase Auth
+      await updateProfile(firebaseUser, { displayName: name });
 
-      if (profileError) {
-        // Se falhar ao criar perfil, remove o usuário do Auth
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-        
-        return {
-          user: null,
-          session: null,
-          error: 'Erro ao criar perfil do usuário'
-        };
-      }
+      // Criar documento do usuário no Firestore
+      const userData = {
+        name,
+        email,
+        role,
+        companyId,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp()
+      };
 
-      // Carrega o perfil completo
-      if (authData.user) {
-        await this.loadUserProfile(authData.user);
-      }
+      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+
+      const authUser: AuthUser = {
+        id: firebaseUser.uid,
+        email,
+        name,
+        role,
+        companyId,
+        companyName: companyData.name || '',
+        isActive: true,
+        lastLogin: new Date(),
+        createdAt: new Date()
+      };
 
       return {
-        user: this.currentUser,
-        session: null,
+        user: authUser,
+        firebaseUser,
         error: null
       };
-    } catch (error) {
-      console.error('Erro no registro:', error);
+    } catch (error: any) {
+      let errorMessage = 'Erro ao criar conta';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este email já está em uso';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Senha muito fraca';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao criar conta';
+      }
+
       return {
         user: null,
-        session: null,
-        error: 'Erro interno do servidor'
+        firebaseUser: null,
+        error: errorMessage
       };
     }
   }
 
-  /**
-   * Realiza logout do usuário
-   */
+  // Fazer logout
   async signOut(): Promise<{ error: string | null }> {
     try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        return { error: this.translateAuthError(error.message) };
-      }
-
-      this.currentUser = null;
-      this.notifyAuthListeners(null);
-
+      await signOut(auth);
       return { error: null };
-    } catch (error) {
-      console.error('Erro no logout:', error);
-      return { error: 'Erro interno do servidor' };
+    } catch (error: any) {
+      return {
+        error: error.message || 'Erro ao fazer logout'
+      };
     }
   }
 
-  /**
-   * Solicita reset de senha
-   */
-  async resetPassword(data: PasswordResetData): Promise<{ error: string | null }> {
+  // Redefinir senha
+  async resetPassword({ email }: PasswordResetData): Promise<{ error: string | null }> {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/reset-password`
+      await sendPasswordResetEmail(auth, email);
+      return { error: null };
+    } catch (error: any) {
+      let errorMessage = 'Erro ao redefinir senha';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'Usuário não encontrado';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao redefinir senha';
+      }
+
+      return { error: errorMessage };
+    }
+  }
+
+  // Atualizar senha
+  async updatePassword({ newPassword }: { newPassword: string }): Promise<{ error: string | null }> {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        return { error: 'Usuário não autenticado' };
+      }
+
+      await updatePassword(user, newPassword);
+      return { error: null };
+    } catch (error: any) {
+      let errorMessage = 'Erro ao atualizar senha';
+      
+      switch (error.code) {
+        case 'auth/weak-password':
+          errorMessage = 'Senha muito fraca';
+          break;
+        case 'auth/requires-recent-login':
+          errorMessage = 'É necessário fazer login novamente para alterar a senha';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao atualizar senha';
+      }
+
+      return { error: errorMessage };
+    }
+  }
+
+  // Atualizar perfil
+  async updateProfile(updates: ProfileUpdateData): Promise<{ user: AuthUser | null; error: string | null }> {
+    try {
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) {
+        return {
+          user: null,
+          error: 'Usuário não autenticado'
+        };
+      }
+
+      // Atualizar perfil no Firebase Auth
+      if (updates.name) {
+        await updateProfile(firebaseUser, { displayName: updates.name });
+      }
+
+      // Atualizar email se fornecido
+      if (updates.email) {
+        await updateEmail(firebaseUser, updates.email);
+      }
+
+      // Atualizar documento do usuário no Firestore
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      await updateDoc(userDocRef, {
+        ...(updates.name && { name: updates.name }),
+        ...(updates.email && { email: updates.email }),
+        updatedAt: serverTimestamp()
       });
 
-      if (error) {
-        return { error: this.translateAuthError(error.message) };
+      // Buscar dados atualizados
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        return {
+          user: null,
+          error: 'Dados do usuário não encontrados'
+        };
       }
 
-      return { error: null };
-    } catch (error) {
-      console.error('Erro ao solicitar reset de senha:', error);
-      return { error: 'Erro interno do servidor' };
-    }
-  }
+      const userData = userDoc.data();
+      const companyDoc = await getDoc(doc(db, 'companies', userData.companyId));
+      const companyData = companyDoc.exists() ? companyDoc.data() : null;
 
-  /**
-   * Atualiza senha do usuário
-   */
-  async updatePassword(data: PasswordUpdateData): Promise<{ error: string | null }> {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: data.newPassword
-      });
+      const authUser: AuthUser = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        name: userData.name || firebaseUser.displayName || '',
+        role: userData.role || 'passenger',
+        companyId: userData.companyId || '',
+        companyName: companyData?.name || '',
+        isActive: userData.isActive || false,
+        lastLogin: userData.lastLogin?.toDate(),
+        createdAt: userData.createdAt?.toDate() || new Date()
+      };
 
-      if (error) {
-        return { error: this.translateAuthError(error.message) };
-      }
-
-      return { error: null };
-    } catch (error) {
-      console.error('Erro ao atualizar senha:', error);
-      return { error: 'Erro interno do servidor' };
-    }
-  }
-
-  /**
-   * Atualiza perfil do usuário
-   */
-  async updateProfile(updates: Partial<Pick<AuthUser, 'name' | 'role'>>): Promise<{ error: string | null }> {
-    if (!this.currentUser) {
-      return { error: 'Usuário não autenticado' };
-    }
-
-    try {
-      const updateData: Partial<UserUpdate> = {};
+      return {
+        user: authUser,
+        error: null
+      };
+    } catch (error: any) {
+      let errorMessage = 'Erro ao atualizar perfil';
       
-      if (updates.name) updateData.name = updates.name;
-      if (updates.role) updateData.role = updates.role;
-
-      const { error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', this.currentUser.id);
-
-      if (error) throw error;
-
-      // Recarrega o perfil do usuário
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await this.loadUserProfile(user);
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este email já está em uso';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/requires-recent-login':
+          errorMessage = 'É necessário fazer login novamente para alterar o email';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao atualizar perfil';
       }
 
-      return { error: null };
-    } catch (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      return { error: 'Erro ao atualizar perfil' };
+      return {
+        user: null,
+        error: errorMessage
+      };
     }
   }
 
-  /**
-   * Verifica se o usuário tem uma permissão específica
-   * Simplificado para retornar true para usuários autenticados
-   */
-  async hasPermission(permission: string): Promise<boolean> {
-    return this.currentUser !== null;
-  }
-
-  /**
-   * Verifica se o usuário tem um dos papéis especificados
-   */
-  hasRole(roles: UserRole | UserRole[]): boolean {
-    if (!this.currentUser) return false;
-    
-    const roleArray = Array.isArray(roles) ? roles : [roles];
-    return roleArray.includes(this.currentUser.role);
-  }
-
-  /**
-   * Obtém usuário atual
-   */
-  getCurrentUser(): AuthUser | null {
-    return this.currentUser;
-  }
-
-  /**
-   * Verifica se o usuário está autenticado
-   */
-  isAuthenticated(): boolean {
-    return this.currentUser !== null;
-  }
-
-  /**
-   * Obtém sessão atual
-   */
-  async getSession(): Promise<Session | null> {
+  // Obter usuário atual
+  async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      return session;
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) return null;
+
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userDoc.exists()) return null;
+
+      const userData = userDoc.data();
+      const companyDoc = await getDoc(doc(db, 'companies', userData.companyId));
+      const companyData = companyDoc.exists() ? companyDoc.data() : null;
+
+      return {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        name: userData.name || firebaseUser.displayName || '',
+        role: userData.role || 'passenger',
+        companyId: userData.companyId || '',
+        companyName: companyData?.name || '',
+        isActive: userData.isActive || false,
+        lastLogin: userData.lastLogin?.toDate(),
+        createdAt: userData.createdAt?.toDate() || new Date()
+      };
     } catch (error) {
-      console.error('Erro ao obter sessão:', error);
+      console.error('Erro ao obter usuário atual:', error);
       return null;
     }
   }
 
-  /**
-   * Traduz erros de autenticação para português
-   */
-  private translateAuthError(error: string): string {
-    const errorMap: Record<string, string> = {
-      'Invalid login credentials': 'Credenciais de login inválidas',
-      'Email not confirmed': 'Email não confirmado',
-      'User not found': 'Usuário não encontrado',
-      'Invalid email': 'Email inválido',
-      'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
-      'User already registered': 'Usuário já cadastrado',
-      'Email already registered': 'Email já cadastrado',
-      'Signup is disabled': 'Cadastro desabilitado',
-      'Email rate limit exceeded': 'Limite de emails excedido',
-      'Invalid refresh token': 'Token de atualização inválido',
-      'Token has expired': 'Token expirado'
+  // Verificar se usuário tem permissão
+  hasPermission(user: AuthUser | null, permission: string): boolean {
+    if (!user) return false;
+    
+    const rolePermissions: Record<string, string[]> = {
+      admin: ['read', 'write', 'delete', 'manage_users', 'manage_companies'],
+      operator: ['read', 'write', 'manage_routes'],
+      driver: ['read', 'update_status'],
+      passenger: ['read']
     };
-
-    return errorMap[error] || error;
+    
+    return rolePermissions[user.role]?.includes(permission) || false;
   }
 
-  /**
-   * Obtém todos os usuários da empresa (apenas para admins e operadores)
-   */
-  async getCompanyUsers(): Promise<AuthUser[]> {
-    if (!this.currentUser || !this.hasRole(['admin', 'operator'])) {
-      throw new Error('Acesso negado');
-    }
-
-    try {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select(`
-          *,
-          companies (
-            id,
-            name,
-            status
-          ),
-          permission_profiles (
-            id,
-            name,
-            access
-          )
-        `)
-        .eq('company_id', this.currentUser.companyId);
-
-      if (error) throw error;
-
-      return users.map(user => ({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role as UserRole,
-        companyId: user.company_id,
-        companyName: user.companies?.name || 'Empresa não encontrada',
-        profileId: user.profile_id || undefined,
-        isActive: user.is_active,
-        lastLogin: user.last_login ? new Date(user.last_login) : undefined,
-        createdAt: new Date(user.created_at)
-      }));
-    } catch (error) {
-      console.error('Erro ao buscar usuários da empresa:', error);
-      throw error;
-    }
+  // Verificar se usuário tem role específica
+  isRole(user: AuthUser | null, role: string): boolean {
+    return user?.role === role;
   }
 
-  /**
-   * Ativa/desativa usuário (apenas para admins)
-   */
-  async toggleUserStatus(userId: string, isActive: boolean): Promise<{ error: string | null }> {
-    if (!this.currentUser || !this.hasRole('admin')) {
-      return { error: 'Acesso negado' };
-    }
-
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_active: isActive })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      return { error: null };
-    } catch (error) {
-      console.error('Erro ao alterar status do usuário:', error);
-      return { error: 'Erro ao alterar status do usuário' };
-    }
+  // Listener para mudanças de autenticação
+  onAuthStateChange(callback: (user: FirebaseUser | null) => void) {
+    return onAuthStateChanged(auth, callback);
   }
 }
 
-// Instância singleton
-export const authService = AuthService.getInstance();
+export const authService = new AuthService();
+export default authService;

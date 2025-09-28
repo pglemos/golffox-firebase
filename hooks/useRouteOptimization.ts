@@ -6,7 +6,7 @@ import {
   MultiStopRoute,
   Coordinates 
 } from '../services/mockRouteOptimizationService';
-import type { Passenger } from '../types';
+import type { Passenger } from '../config/types';
 
 export interface RouteOptimizationState {
   optimizedRoute: OptimizedRoute | null;

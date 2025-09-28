@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* 🔮 Glow pulsante em laranja */
+  @keyframes neonPulseOrange {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(255, 165, 0, 0.8),
+                  0 0 20px rgba(255, 165, 0, 0.6),
+                  0 0 40px rgba(255, 165, 0, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(255, 165, 0, 1),
+                  0 0 40px rgba(255, 165, 0, 0.8),
+                  0 0 60px rgba(255, 165, 0, 0.6);
+    }
+  }
+
+  .animate-neon-orange {
+    animation: neonPulseOrange 1.8s infinite alternate;
+  }
+
+  /* 🌈 Bordas animadas gradiente (laranja → branco) */
+  @keyframes movingBorder {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .border-animate {
+    background: linear-gradient(90deg, orange, white, orange);
+    background-size: 200% 200%;
+    animation: movingBorder 3s linear infinite;
+    padding: 2px; /* controla a largura da borda */
+    border-radius: 10px;
+  }
+
+  /* Animação de fade in */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fadeIn {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  /* Efeito hover para botões */
+  .hover-glow:hover {
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+  }
+}

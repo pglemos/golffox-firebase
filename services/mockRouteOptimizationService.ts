@@ -1,4 +1,4 @@
-import type { Passenger } from '../types';
+import type { Passenger } from '../config/types';
 
 export interface Coordinates {
   lat: number;

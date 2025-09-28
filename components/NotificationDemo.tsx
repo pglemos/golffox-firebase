@@ -2,7 +2,7 @@ import React from 'react';
 import { Bell, AlertTriangle, Info, CheckCircle, Clock, Car, Users } from 'lucide-react';
 import { useToastNotifications } from '../hooks/useToastNotifications';
 import { useNotifications } from '../hooks/useNotifications';
-import { AlertType } from '../types';
+import { AlertType } from '../config/types';
 import { NotificationContainer } from './NotificationToast';
 
 const NotificationDemo: React.FC = () => {

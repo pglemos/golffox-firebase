@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ALL_ACCESS_AREAS } from '../constants';
-import type { PermissionProfile } from '../types';
+import { ALL_ACCESS_AREAS } from '../config/constants';
+import type { PermissionProfile } from '../config/types';
 import { AdjustmentsHorizontalIcon, CheckCircleIcon, PencilIcon, XMarkIcon } from './icons/Icons';
 
 interface PermissionsManagementProps {

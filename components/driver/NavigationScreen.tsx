@@ -1,18 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MOCK_DIRECTIONS } from '../../constants';
-import { ArrowUpIcon, ArrowRightIcon, ArrowUturnLeftIcon, FlagCheckeredIcon } from '../icons/Icons';
-import type { IconProps } from '../icons/Icons';
+import { MOCK_DIRECTIONS } from '../../config/constants';
+import { 
+    ArrowUpIcon, 
+    ArrowRightIcon, 
+    ArrowUturnLeftIcon, 
+    FlagIcon,
+    ClockIcon,
+    MapPinIcon
+} from '@heroicons/react/24/outline';
+import Button from '../ui/Button';
+import Card from '../ui/Card';
 import MapApiKeyWarning from '../MapApiKeyWarning';
 
 interface NavigationScreenProps {
     onEndRoute: () => void;
 }
 
-const iconMap: { [key: string]: React.FC<IconProps> } = {
+const iconMap: { [key: string]: React.FC<{ className?: string }> } = {
     ArrowUpIcon,
     ArrowRightIcon,
     ArrowUturnLeftIcon,
-    FlagCheckeredIcon,
+    FlagCheckeredIcon: FlagIcon,
 };
 
 // Mock coordinates for complete route
@@ -38,7 +46,7 @@ const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
     const [routeLoaded, setRouteLoaded] = useState(false);
     
     const currentDirection = MOCK_DIRECTIONS[currentDirectionIndex];
-    const IconComponent = iconMap[currentDirection.icon] || FlagCheckeredIcon;
+    const IconComponent = iconMap[currentDirection.icon] || FlagIcon;
 
     useEffect(() => {
         const intervalId = setInterval(() => {
@@ -197,55 +205,74 @@ const NavigationScreen: React.FC<NavigationScreenProps> = ({ onEndRoute }) => {
     }, []);
 
     return (
-        <div className="flex flex-col h-full bg-golffox-blue-dark text-white">
-            <div className="bg-golffox-blue-light p-3 sm:p-4 md:p-6 shadow-lg z-10 animate-fade-in-down">
-                <div className="flex items-center">
-                    <div className="mr-2 sm:mr-3 md:mr-4">
-                        <IconComponent className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" variant="premium" />
+        <div className="flex flex-col h-full bg-gradient-to-br from-primary-50 to-primary-100">
+            {/* Header com instrução de navegação */}
+            <Card className="m-4 mb-2 bg-primary-600 text-white border-0 shadow-lg">
+                <div className="flex items-center p-4">
+                    <div className="mr-4 p-3 bg-white/20 rounded-full">
+                        <IconComponent className="h-8 w-8 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">{currentDirection.instruction}</h1>
-                        <p className="text-base sm:text-xl md:text-2xl text-white/80">{currentDirection.distance}</p>
+                        <h1 className="text-xl font-bold truncate">{currentDirection.instruction}</h1>
+                        <p className="text-lg text-white/90">{currentDirection.distance}</p>
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            <div className="flex-grow relative bg-gray-400 min-h-0">
+            {/* Mapa */}
+            <div className="flex-grow relative mx-4 mb-2 rounded-xl overflow-hidden shadow-lg">
                 {mapStatus === 'error' && <MapApiKeyWarning />}
                 {mapStatus === 'loading' && (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                        <p className="text-golffox-gray-medium text-sm sm:text-base">Carregando Mapa...</p>
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+                            <p className="text-gray-600 text-sm">Carregando Mapa...</p>
+                        </div>
                     </div>
                 )}
                 <div ref={mapRef} className={`w-full h-full ${mapStatus !== 'loaded' ? 'invisible' : ''}`} />
             </div>
 
-            <footer className="bg-golffox-blue-dark/80 backdrop-blur-sm p-3 sm:p-4 border-t border-white/10 z-10 flex-shrink-0">
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4">
-                    <div className="text-center">
-                        <p className="text-xs sm:text-sm opacity-70">Velocidade</p>
-                        <p className="text-lg sm:text-xl md:text-2xl font-bold">
-                            58 <span className="text-sm sm:text-base md:text-lg opacity-70">km/h</span>
-                        </p>
+            {/* Informações de navegação */}
+            <Card className="mx-4 mb-4 bg-white shadow-lg">
+                <div className="p-4">
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                                <MapPinIcon className="h-4 w-4 text-primary-600 mr-1" />
+                                <p className="text-xs text-gray-600">Velocidade</p>
+                            </div>
+                            <p className="text-lg font-bold text-gray-900">
+                                58 <span className="text-sm text-gray-500">km/h</span>
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                                <ClockIcon className="h-4 w-4 text-primary-600 mr-1" />
+                                <p className="text-xs text-gray-600">Chegada (ETA)</p>
+                            </div>
+                            <p className="text-lg font-bold text-gray-900">06:45</p>
+                        </div>
+                        <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                                <FlagIcon className="h-4 w-4 text-primary-600 mr-1" />
+                                <p className="text-xs text-gray-600">Restante</p>
+                            </div>
+                            <p className="text-lg font-bold text-gray-900">
+                                12 <span className="text-sm text-gray-500">km</span>
+                            </p>
+                        </div>
                     </div>
-                    <div className="text-center">
-                        <p className="text-xs sm:text-sm opacity-70">Chegada (ETA)</p>
-                        <p className="text-lg sm:text-xl md:text-2xl font-bold">06:45</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-xs sm:text-sm opacity-70">Restante</p>
-                        <p className="text-lg sm:text-xl md:text-2xl font-bold">
-                            12 <span className="text-sm sm:text-base md:text-lg opacity-70">km</span>
-                        </p>
-                    </div>
+                    <Button
+                        onClick={onEndRoute}
+                        variant="danger"
+                        size="lg"
+                        className="w-full"
+                    >
+                        Finalizar Rota
+                    </Button>
                 </div>
-                <button
-                    onClick={onEndRoute}
-                    className="w-full bg-golffox-red text-white font-bold py-3 sm:py-4 rounded-lg hover:bg-red-700 active:bg-red-800 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base min-h-[48px]"
-                >
-                    Finalizar Rota
-                </button>
-            </footer>
+            </Card>
         </div>
     );
 };

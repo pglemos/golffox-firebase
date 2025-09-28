@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
-import { Eye, EyeOff, LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import '../../styles/globals.css';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -16,7 +19,6 @@ export function LoginForm({ onSuccess, onForgotPassword, className = '' }: Login
     email: '',
     password: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,137 +79,136 @@ export function LoginForm({ onSuccess, onForgotPassword, className = '' }: Login
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
-    <div className={`w-full max-w-md mx-auto ${className}`}>
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <LogIn className="w-8 h-8 text-blue-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Bem-vindo ao Golffox
+    <div className="flex items-center justify-center min-h-screen bg-black px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="flex flex-col md:flex-row w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl bg-black"
+      >
+        {/* Lado esquerdo - Formulário */}
+        <motion.div
+          initial={{ x: -30, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="flex-1 p-6 sm:p-8 md:p-12 text-white flex flex-col justify-center"
+        >
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex justify-center md:justify-start mb-6 sm:mb-8"
+          >
+            <Image
+              src="/golffox_logo.png"
+              alt="Golf Fox Logo"
+              className="w-28 sm:w-32 md:w-36 drop-shadow-[0_0_15px_rgba(255,165,0,0.8)]"
+              width={144}
+              height={48}
+            />
+          </motion.div>
+
+          {/* Título */}
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">
+            Faça seu login<span className="text-orange-400">.</span>
           </h2>
-          <p className="text-gray-600">
-            Faça login para acessar sua conta
-          </p>
-        </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Field */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="seu@email.com"
-                disabled={isSubmitting || loading}
-              />
-            </div>
-          </div>
-
-          {/* Password Field */}
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Senha
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Sua senha"
-                disabled={isSubmitting || loading}
-              />
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                disabled={isSubmitting || loading}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Forgot Password Link */}
-          {onForgotPassword && (
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
-                disabled={isSubmitting || loading}
-              >
-                Esqueceu sua senha?
-              </button>
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-lg flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting || loading}
-            className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSubmitting || loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Entrando...
-              </>
-            ) : (
-              <>
-                <LogIn className="w-4 h-4" />
-                Entrar
-              </>
-            )}
-          </button>
-        </form>
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+            {/* Email */}
+            <div className="border-animate rounded-lg">
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Digite seu email"
+                required
+                disabled={isSubmitting || loading}
+                className="w-full px-4 py-3 rounded-lg bg-black text-white outline-none animate-neon-orange"
+              />
+            </div>
 
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
-            Sistema de Gestão de Transporte
-          </p>
-        </div>
-      </div>
+            {/* Senha */}
+            <div className="border-animate rounded-lg">
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Digite sua senha"
+                required
+                disabled={isSubmitting || loading}
+                className="w-full px-4 py-3 rounded-lg bg-black text-white outline-none animate-neon-orange"
+              />
+            </div>
+
+            {/* Esqueci senha */}
+            {onForgotPassword && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-sm text-gray-300 hover:text-orange-400 transition"
+                  disabled={isSubmitting || loading}
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+
+            {/* Botão Entrar */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="border-animate rounded-lg"
+            >
+              <button
+                type="submit"
+                disabled={isSubmitting || loading}
+                className="w-full py-3 rounded-lg font-semibold text-lg text-white bg-black hover:scale-105 transition-transform animate-neon-orange"
+              >
+                {isSubmitting || loading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </motion.div>
+
+            {/* Registrar */}
+            <a
+              href="#"
+              className="block text-center text-sm text-gray-300 hover:text-orange-400 mt-4"
+            >
+              Ainda não tenho uma conta
+            </a>
+          </form>
+        </motion.div>
+
+        {/* Lado direito - Imagem (só aparece em telas md pra cima) */}
+        <motion.div
+          initial={{ x: 30, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="hidden md:flex flex-1 relative"
+        >
+          <Image
+            src="https://images.unsplash.com/photo-1503264116251-35a269479413?ixlib=rb-4.0.3&auto=format&fit=crop&w=900&q=80"
+            alt="Login background"
+            className="w-full h-full object-cover"
+            fill
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

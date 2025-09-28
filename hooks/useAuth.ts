@@ -1,10 +1,47 @@
-import React, { useState, useEffect, useContext, createContext, ReactNode } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-import { authService, type AuthUser, type UserRole } from '../services/authService';
+import * as React from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { 
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  updateProfile as firebaseUpdateProfile,
+  updatePassword as firebaseUpdatePassword,
+  sendPasswordResetEmail,
+  updateEmail,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+
+export type UserRole = 'admin' | 'operator' | 'driver' | 'passenger';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  companyId: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthError {
+  message: string;
+  name: string;
+  status: number;
+}
 
 export interface AuthContextType {
   user: AuthUser | null;
-  session: Session | null;
+  firebaseUser: FirebaseUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ user: AuthUser | null; error: AuthError | null }>;
   signUp: (email: string, password: string, userData: {
@@ -19,7 +56,7 @@ export interface AuthContextType {
     name?: string;
     email?: string;
   }) => Promise<{ user: AuthUser | null; error: AuthError | null }>;
-  refreshSession: () => Promise<void>;
+  getIdToken: () => Promise<string | null>;
   hasPermission: (permission: string) => boolean;
   isRole: (role: string) => boolean;
 }
@@ -28,28 +65,45 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-        
-        const currentSession = await authService.getSession();
-        setSession(currentSession);
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setLoading(false);
+  // Função para buscar dados do usuário no Firestore
+  const fetchUserData = async (firebaseUser: FirebaseUser): Promise<AuthUser | null> => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: userData.name || firebaseUser.displayName || '',
+          role: userData.role || 'passenger',
+          companyId: userData.companyId || '',
+          status: userData.status || 'active',
+          createdAt: userData.createdAt || new Date().toISOString(),
+          updatedAt: userData.updatedAt || new Date().toISOString(),
+        };
       }
-    };
+      return null;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
+    }
+  };
 
-    initializeAuth();
-
-    const unsubscribe = authService.onAuthStateChange((user) => {
-      setUser(user);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setFirebaseUser(firebaseUser);
+      
+      if (firebaseUser) {
+        const userData = await fetchUserData(firebaseUser);
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+      
+      setLoading(false);
     });
 
     return unsubscribe;
@@ -57,24 +111,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> => {
     try {
-      const result = await authService.signIn({ email, password });
-      if (result.user) {
-        setUser(result.user);
-        return { user: result.user, error: null };
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userData = await fetchUserData(userCredential.user);
+      
+      if (userData) {
+        return { user: userData, error: null };
       }
+      
       return { 
         user: null, 
         error: {
-          message: result.error || 'Erro ao fazer login',
-          name: 'SignInError',
-          status: 400
+          message: 'Dados do usuário não encontrados',
+          name: 'UserDataError',
+          status: 404
         } as AuthError
       };
     } catch (error: any) {
+      let errorMessage = 'Erro ao fazer login';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'Usuário não encontrado';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Senha incorreta';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Usuário desabilitado';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao fazer login';
+      }
+      
       return {
         user: null,
         error: {
-          message: error.message || 'Erro ao fazer login',
+          message: errorMessage,
           name: 'SignInError',
           status: 400
         } as AuthError
@@ -88,31 +163,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     companyId: string;
   }): Promise<{ user: AuthUser | null; error: AuthError | null }> => {
     try {
-      const result = await authService.signUp({
-        email,
-        password,
-        name: userData.name,
-        role: userData.role,
-        companyId: userData.companyId
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Atualizar perfil do Firebase
+      await firebaseUpdateProfile(userCredential.user, {
+        displayName: userData.name
       });
       
-      if (result.user) {
-        setUser(result.user);
-        return { user: result.user, error: null };
-      }
-      return { 
-        user: null, 
-        error: {
-          message: result.error || 'Erro ao criar conta',
-          name: 'SignUpError',
-          status: 400
-        } as AuthError
+      // Criar documento do usuário no Firestore
+      const newUser: AuthUser = {
+        id: userCredential.user.uid,
+        email: email,
+        name: userData.name,
+        role: userData.role,
+        companyId: userData.companyId,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
+      
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        name: userData.name,
+        role: userData.role,
+        companyId: userData.companyId,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      
+      return { user: newUser, error: null };
     } catch (error: any) {
+      let errorMessage = 'Erro ao criar conta';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este email já está em uso';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Senha muito fraca';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao criar conta';
+      }
+      
       return {
         user: null,
         error: {
-          message: error.message || 'Erro ao criar conta',
+          message: errorMessage,
           name: 'SignUpError',
           status: 400
         } as AuthError
@@ -122,9 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async (): Promise<{ error: AuthError | null }> => {
     try {
-      await authService.signOut();
-      setUser(null);
-      setSession(null);
+      await firebaseSignOut(auth);
       return { error: null };
     } catch (error: any) {
       return {
@@ -139,12 +237,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
     try {
-      await authService.resetPassword({ email });
+      await sendPasswordResetEmail(auth, email);
       return { error: null };
     } catch (error: any) {
+      let errorMessage = 'Erro ao redefinir senha';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'Usuário não encontrado';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao redefinir senha';
+      }
+      
       return {
         error: {
-          message: error.message || 'Erro ao redefinir senha',
+          message: errorMessage,
           name: 'ResetPasswordError',
           status: 400
         } as AuthError
@@ -154,12 +265,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updatePassword = async (newPassword: string): Promise<{ error: AuthError | null }> => {
     try {
-      await authService.updatePassword({ password: '', newPassword });
+      if (!firebaseUser) {
+        return {
+          error: {
+            message: 'Usuário não autenticado',
+            name: 'UpdatePasswordError',
+            status: 401
+          } as AuthError
+        };
+      }
+      
+      await firebaseUpdatePassword(firebaseUser, newPassword);
       return { error: null };
     } catch (error: any) {
+      let errorMessage = 'Erro ao atualizar senha';
+      
+      switch (error.code) {
+        case 'auth/weak-password':
+          errorMessage = 'Senha muito fraca';
+          break;
+        case 'auth/requires-recent-login':
+          errorMessage = 'É necessário fazer login novamente para alterar a senha';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao atualizar senha';
+      }
+      
       return {
         error: {
-          message: error.message || 'Erro ao atualizar senha',
+          message: errorMessage,
           name: 'UpdatePasswordError',
           status: 400
         } as AuthError
@@ -169,15 +303,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (updates: { name?: string; email?: string }): Promise<{ user: AuthUser | null; error: AuthError | null }> => {
     try {
-      await authService.updateProfile(updates);
-      const updatedUser = await authService.getCurrentUser();
-      setUser(updatedUser);
-      return { user: updatedUser, error: null };
+      if (!firebaseUser) {
+        return {
+          user: null,
+          error: {
+            message: 'Usuário não autenticado',
+            name: 'UpdateProfileError',
+            status: 401
+          } as AuthError
+        };
+      }
+
+      // Atualizar perfil no Firebase Auth
+      if (updates.name) {
+        await firebaseUpdateProfile(firebaseUser, { displayName: updates.name });
+      }
+
+      // Atualizar email se fornecido
+      if (updates.email) {
+        await updateEmail(firebaseUser, updates.email);
+      }
+
+      // Atualizar documento do usuário no Firestore
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      await updateDoc(userDocRef, {
+        ...(updates.name && { name: updates.name }),
+        ...(updates.email && { email: updates.email }),
+        updatedAt: serverTimestamp()
+      });
+
+      // Buscar dados atualizados
+      const updatedUserData = await fetchUserData(firebaseUser);
+      setUser(updatedUserData);
+      
+      return { user: updatedUserData, error: null };
     } catch (error: any) {
+      let errorMessage = 'Erro ao atualizar perfil';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este email já está em uso';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/requires-recent-login':
+          errorMessage = 'É necessário fazer login novamente para alterar o email';
+          break;
+        default:
+          errorMessage = error.message || 'Erro ao atualizar perfil';
+      }
+      
       return {
         user: null,
         error: {
-          message: error.message || 'Erro ao atualizar perfil',
+          message: errorMessage,
           name: 'UpdateProfileError',
           status: 400
         } as AuthError
@@ -185,12 +365,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const refreshSession = async () => {
+  const getIdToken = async (): Promise<string | null> => {
     try {
-      const newSession = await authService.getSession();
-      setSession(newSession);
+      if (!firebaseUser) return null;
+      return await firebaseUser.getIdToken();
     } catch (error) {
-      console.error('Error refreshing session:', error);
+      console.error('Error getting ID token:', error);
+      return null;
     }
   };
 
@@ -213,7 +394,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextType = {
     user,
-    session,
+    firebaseUser,
     loading,
     signIn,
     signUp,
@@ -221,7 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     updatePassword,
     updateProfile,
-    refreshSession,
+    getIdToken,
     hasPermission,
     isRole
   };
@@ -275,6 +456,7 @@ export function ProtectedRoute({
   fallback?: ReactNode;
 }) {
   const { user, loading } = useAuth();
+  const hasRequiredPermission = usePermission(requiredPermission || '');
 
   if (loading) {
     return React.createElement('div', null, 'Carregando...');
@@ -288,11 +470,9 @@ export function ProtectedRoute({
     return fallback || React.createElement('div', null, 'Permissao insuficiente');
   }
 
-  if (requiredPermission && !usePermission(requiredPermission)) {
+  if (requiredPermission && !hasRequiredPermission) {
     return fallback || React.createElement('div', null, 'Permissao insuficiente');
   }
 
   return React.createElement(React.Fragment, null, children);
 }
-
-export type { AuthUser };

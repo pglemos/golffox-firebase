@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import PassengerHome from '../components/passenger/PassengerHome';
 import PassengerLoginScreen from '../components/passenger/PassengerLoginScreen';
-import type { Employee } from '../types';
+import type { Employee } from '../config/types';
 
 interface PassengerAppProps {
     employees: Employee[];

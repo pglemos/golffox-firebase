@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { GOLFFOX_LOGO_BASE64 } from '../../constants';
-import type { Employee, PermissionProfile } from '../../types';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { GOLFFOX_LOGO_BASE64 } from '../../config/constants';
+import type { Employee, PermissionProfile } from '../../config/types';
+import '../../styles/globals.css';
 
 interface ClientLoginScreenProps {
     onLogin: (operator: Employee) => void;
@@ -43,57 +46,119 @@ const ClientLoginScreen: React.FC<ClientLoginScreenProps> = ({ onLogin, employee
     };
 
     return (
-        <div className="w-full flex items-center justify-center bg-golffox-gray-light">
-            <div className="w-full max-w-md bg-white p-10 rounded-xl shadow-2xl text-center">
-                <img src={GOLFFOX_LOGO_BASE64} alt="Golffox Logo" className="h-20 mb-6 mx-auto" />
-                <h1 className="text-3xl font-bold text-golffox-gray-dark mb-2">Portal do Operador</h1>
-                <p className="text-golffox-gray-medium mb-8">Faça login para gerenciar suas operações.</p>
+        <div className="flex items-center justify-center min-h-screen bg-black px-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="flex flex-col md:flex-row w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl bg-black"
+            >
+                {/* Lado esquerdo - Formulário */}
+                <motion.div
+                    initial={{ x: -30, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="flex-1 p-6 sm:p-8 md:p-12 text-white flex flex-col justify-center"
+                >
+                    {/* Logo */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="flex justify-center md:justify-start mb-6 sm:mb-8"
+                    >
+                        <Image
+                            src="/golffox_logo.png"
+                            alt="Golf Fox Logo"
+                            className="w-28 sm:w-32 md:w-36 drop-shadow-[0_0_15px_rgba(255,165,0,0.8)]"
+                            width={144}
+                            height={48}
+                        />
+                    </motion.div>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="w-full space-y-4 text-left">
-                         <div>
-                            <label className="text-sm font-bold text-golffox-gray-medium">Email</label>
-                            <input 
-                                type="email" 
+                    {/* Título */}
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+                        Portal do Operador<span className="text-orange-400">.</span>
+                    </h2>
+                    <p className="text-gray-300 mb-6 sm:mb-8">Faça login para gerenciar suas operações</p>
+
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-lg">
+                            <p className="text-red-300 text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    {/* Formulário */}
+                    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+                        {/* Email */}
+                        <div className="border-animate rounded-lg">
+                            <input
+                                type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="seu.email@empresa.com" 
+                                placeholder="Digite seu email"
+                                required
                                 disabled={isLoading}
-                                className="mt-1 w-full p-3 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none"
+                                className="w-full px-4 py-3 rounded-lg bg-black text-white outline-none animate-neon-orange"
                             />
                         </div>
-                         <div>
-                            <label className="text-sm font-bold text-golffox-gray-medium">Senha</label>
-                            <input 
-                                type="password" 
+
+                        {/* Senha */}
+                        <div className="border-animate rounded-lg">
+                            <input
+                                type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="********" 
+                                placeholder="Digite sua senha"
+                                required
                                 disabled={isLoading}
-                                className="mt-1 w-full p-3 bg-white border border-golffox-gray-light rounded-lg text-golffox-gray-dark focus:ring-2 focus:ring-golffox-orange-primary focus:outline-none"
+                                className="w-full px-4 py-3 rounded-lg bg-black text-white outline-none animate-neon-orange"
                             />
                         </div>
-                    </div>
 
-                    {error && <p className="text-golffox-red mt-4 text-center font-semibold">{error}</p>}
+                        {/* Botão Entrar */}
+                        <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.6, delay: 0.3 }}
+                            className="border-animate rounded-lg"
+                        >
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full py-3 rounded-lg font-semibold text-lg text-white bg-black hover:scale-105 transition-transform animate-neon-orange"
+                            >
+                                {isLoading ? 'Acessando...' : 'Acessar Portal'}
+                            </button>
+                        </motion.div>
 
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-golffox-orange-primary text-white font-bold py-3 rounded-lg mt-8 hover:bg-orange-600 transition-all duration-300 transform hover:scale-105 disabled:bg-golffox-gray-medium disabled:cursor-not-allowed flex items-center justify-center"
-                    >
-                         {isLoading ? (
-                            <>
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Acessando...
-                            </>
-                        ) : 'Acessar Portal'}
-                    </button>
-                </form>
-            </div>
+                        {/* Registrar */}
+                        <a
+                            href="#"
+                            className="block text-center text-sm text-gray-300 hover:text-orange-400 mt-4"
+                        >
+                            Ainda não tenho uma conta
+                        </a>
+                    </form>
+                </motion.div>
+
+                {/* Lado direito - Imagem (só aparece em telas md pra cima) */}
+                <motion.div
+                    initial={{ x: 30, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                    className="hidden md:flex flex-1 relative"
+                >
+                    <Image
+                        src="https://images.unsplash.com/photo-1503264116251-35a269479413?ixlib=rb-4.0.3&auto=format&fit=crop&w=900&q=80"
+                        alt="Login background"
+                        className="w-full h-full object-cover"
+                        fill
+                    />
+                    <div className="absolute inset-0 bg-black/60" />
+                </motion.div>
+            </motion.div>
         </div>
     );
 };
