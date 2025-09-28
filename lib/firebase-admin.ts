@@ -39,6 +39,7 @@ try {
         }),
         projectId: adminConfig.projectId,
         storageBucket: adminConfig.storageBucket,
+        databaseURL: 'https://golffox-main.firebaseio.com'
       }, 'admin')
     } else {
       adminApp = getApps().find(app => app.name === 'admin') || getApps()[0]
@@ -54,7 +55,7 @@ try {
 
 // Inicializar serviços Admin
 export const adminAuth: Auth | null = adminApp ? getAuth(adminApp) : null
-export const adminDb: Firestore | null = adminApp ? getFirestore(adminApp) : null
+export const adminDb: Firestore | null = adminApp ? getFirestore(adminApp, 'golffox-main') : null
 export const adminStorage: Storage | null = adminApp ? getStorage(adminApp) : null
 
 // Função para verificar se o Admin está configurado corretamente

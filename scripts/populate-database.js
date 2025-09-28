@@ -1,4 +1,5 @@
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 require('dotenv').config({ path: '.env.local' });
 
 // Configuração do Firebase Admin
@@ -14,14 +15,12 @@ if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.
 }
 
 // Inicializar Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: serviceAccount.projectId
-  });
-}
+const app = initializeApp({
+  credential: cert(serviceAccount),
+  projectId: serviceAccount.projectId
+});
 
-const db = admin.firestore();
+const db = getFirestore(app, 'golffox-main');
 
 // Dados de exemplo
 const sampleData = {
@@ -35,8 +34,8 @@ const sampleData = {
       addressLat: -23.5613,
       addressLng: -46.6565,
       contractedPassengers: 500,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Transporte Seguro S.A.',
@@ -47,8 +46,8 @@ const sampleData = {
       addressLat: -22.9068,
       addressLng: -43.1729,
       contractedPassengers: 250,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Via Rápida Transportes',
@@ -59,8 +58,8 @@ const sampleData = {
       addressLat: -19.9167,
       addressLng: -43.9345,
       contractedPassengers: 100,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     }
   ],
 
@@ -84,8 +83,8 @@ const sampleData = {
       credentialingDate: new Date('2023-01-15'),
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Roberto Costa',
@@ -106,8 +105,8 @@ const sampleData = {
       credentialingDate: new Date('2023-03-20'),
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Pedro Almeida',
@@ -128,8 +127,8 @@ const sampleData = {
       credentialingDate: new Date('2022-11-10'),
       status: 'Ativo',
       linkedCompany: 'Transporte Seguro S.A.',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Ana Paula Santos',
@@ -150,8 +149,8 @@ const sampleData = {
       credentialingDate: new Date('2023-05-08'),
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     }
   ],
 
@@ -174,8 +173,8 @@ const sampleData = {
       nextMaintenance: new Date('2024-07-15'),
       currentKm: 45000,
       isRegistered: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       plate: 'DEF-5678',
@@ -195,8 +194,8 @@ const sampleData = {
       nextMaintenance: new Date('2024-08-10'),
       currentKm: 38000,
       isRegistered: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       plate: 'GHI-9012',
@@ -216,8 +215,8 @@ const sampleData = {
       nextMaintenance: new Date('2024-07-20'),
       currentKm: 25000,
       isRegistered: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     }
   ],
 
@@ -233,8 +232,8 @@ const sampleData = {
       pickupTime: '07:30:00',
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Maria Oliveira',
@@ -247,8 +246,8 @@ const sampleData = {
       pickupTime: '07:45:00',
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Pedro Santos',
@@ -261,8 +260,8 @@ const sampleData = {
       pickupTime: '08:00:00',
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Ana Costa',
@@ -275,8 +274,8 @@ const sampleData = {
       pickupTime: '08:15:00',
       status: 'Ativo',
       linkedCompany: 'Transporte Seguro S.A.',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Carlos Ferreira',
@@ -289,8 +288,8 @@ const sampleData = {
       pickupTime: '07:15:00',
       status: 'Ativo',
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     }
   ],
 
@@ -304,8 +303,8 @@ const sampleData = {
       origin: 'Centro - São Paulo, SP',
       punctuality: 0,
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Rota Aeroporto - Hotéis',
@@ -316,8 +315,8 @@ const sampleData = {
       origin: 'Aeroporto de Congonhas - São Paulo, SP',
       punctuality: 5,
       linkedCompany: 'GolfFox Transportes Ltda',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       name: 'Rota Copacabana - Centro',
@@ -328,8 +327,8 @@ const sampleData = {
       origin: 'Copacabana - Rio de Janeiro, RJ',
       punctuality: -10,
       linkedCompany: 'Transporte Seguro S.A.',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     }
   ],
 
@@ -340,8 +339,8 @@ const sampleData = {
       message: 'Veículo ABC-1234 precisa de manutenção preventiva em 15 dias',
       isRead: false,
       priority: 'medium',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       type: 'Crítico',
@@ -349,8 +348,8 @@ const sampleData = {
       message: 'CNH do motorista Carlos Oliveira vence em 30 dias',
       isRead: false,
       priority: 'high',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       type: 'Informativo',
@@ -358,8 +357,8 @@ const sampleData = {
       message: 'Rota apresentou atraso de 20 minutos devido ao trânsito',
       isRead: true,
       priority: 'low',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     },
     {
       type: 'Crítico',
@@ -367,8 +366,8 @@ const sampleData = {
       message: 'Veículo DEF-5678 excedeu limite de velocidade na Marginal Tietê',
       isRead: false,
       priority: 'high',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     }
   ]
 };
